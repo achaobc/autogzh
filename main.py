@@ -50,8 +50,8 @@ def extract_title_from_md(md_path):
     title, _ = os.path.splitext(basename)
     return title
 
-def extract_digest_from_html(html_content, max_length=120):
-    """从生成的 HTML 中剥离文本并截取作为摘要"""
+def extract_digest_from_html(html_content, max_bytes=120):
+    """从生成的 HTML 中剥离文本并按字节截取作为摘要，微信限制摘要最多 120 字节"""
     try:
         soup = BeautifulSoup(html_content, "html.parser")
         # 移除代码块，避免代码混入摘要中影响观感
@@ -64,9 +64,16 @@ def extract_digest_from_html(html_content, max_length=120):
         # 清理连续空格、制表符和换行
         text = re.sub(r'\s+', ' ', text).strip()
         
-        if len(text) > max_length:
-            return text[:max_length] + "..."
-        return text if text else "点击阅读全文"
+        encoded = text.encode('utf-8')
+        if len(encoded) <= max_bytes:
+            return text
+            
+        # 截断时留出 3 字节给省略号 "..."
+        target_bytes = max_bytes - 3
+        truncated_encoded = encoded[:target_bytes]
+        # 避免截断多字节字符产生的 decode 错误
+        truncated_text = truncated_encoded.decode('utf-8', errors='ignore')
+        return truncated_text + "..."
     except Exception as e:
         logger.warning(f"生成自动摘要失败: {e}")
         return "点击阅读全文"
@@ -157,6 +164,14 @@ def main():
             # 自动生成摘要
             digest = extract_digest_from_html(html_content)
             logger.info("未提供摘要，已根据文章正文自动生成。")
+            
+    # 强制进行字节长度截取，确保最终发送给微信的 digest 绝不超过 120 字节，规避 45004 错误
+    if digest:
+        encoded_digest = digest.encode('utf-8')
+        if len(encoded_digest) > 120:
+            # 扣除省略号的 3 字节后截断
+            digest = encoded_digest[:117].decode('utf-8', errors='ignore') + "..."
+            logger.info("摘要长度超过 120 字节，已自动截断以适配微信限制。")
             
     logger.info(f"文章要素摘要:")
     logger.info(f"  - 标题: {title}")
