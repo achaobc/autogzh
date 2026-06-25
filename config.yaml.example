@@ -1,0 +1,22 @@
+# 微信公众号自动化排版与同步工具配置文件模板
+# 使用前请复制此文件并重命名为 config.yaml，然后填写你的配置
+
+wechat:
+  # 微信公众号的 AppID
+  appid: "YOUR_APPID"
+  
+  # 微信公众号的 AppSecret (敏感信息，请妥善保管，勿上传至公开代码库)
+  secret: "YOUR_APPSECRET"
+
+draft_defaults:
+  # 默认作者名字，如果不设置，可以在命令行指定，或留空
+  author: "默认作者"
+  
+  # 是否显示封面，1表示显示，0表示不显示
+  show_cover_pic: 1
+  
+  # 是否打开评论，0不打开，1打开(仅对有评论权限的账号有效)
+  need_open_comment: 0
+  
+  # 是否只允许有权限的标记
+  only_less_tags: 0

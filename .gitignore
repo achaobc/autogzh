@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Configuration (Sensitive info)
+config.yaml
+
+# WeChat Token cache
+.wechat_token.json
+
+# Local output / test files
+output_test.html

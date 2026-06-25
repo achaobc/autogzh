@@ -1,0 +1,178 @@
+/* 微信公众号专属 Markdown 排版样式表 (Elegant Teal 主题) */
+
+/* 文章整体排版容器（如果外层有包裹，方便选择） */
+.markdown-body {
+    font-family: -apple-system-font, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+    font-size: 16px;
+    color: #2f2f2f;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+    word-wrap: break-word;
+    text-align: justify;
+    padding: 10px;
+}
+
+/* 基础段落 */
+p {
+    margin: 1.5em 0;
+    line-height: 1.8;
+    color: #3e3e3e;
+}
+
+/* 一级标题 (通常作为大版块分隔) */
+h1 {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #0d9488; /* 优雅的深茶色/青色 */
+    margin: 2em 0 1em;
+    padding-bottom: 0.4em;
+    border-bottom: 2px solid #0d9488;
+    text-align: center;
+}
+
+/* 二级标题 (左侧带精致小竖条) */
+h2 {
+    font-size: 1.25em;
+    font-weight: bold;
+    color: #0f172a; /* 深黛色 */
+    margin: 1.8em 0 1em;
+    padding-left: 10px;
+    border-left: 4px solid #0d9488;
+    line-height: 1.4;
+}
+
+/* 三级标题 */
+h3 {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #1e293b;
+    margin: 1.5em 0 0.8em;
+}
+
+/* 四级标题 */
+h4 {
+    font-size: 1em;
+    font-weight: bold;
+    color: #334155;
+    margin: 1.2em 0 0.6em;
+}
+
+/* 引用块 */
+blockquote {
+    margin: 1.5em 0;
+    padding: 12px 18px;
+    border-left: 4px solid #cbd5e1;
+    background-color: #f8fafc;
+    color: #475569;
+    border-radius: 0 6px 6px 0;
+}
+
+blockquote p {
+    margin: 0.5em 0;
+    font-size: 0.95em;
+}
+
+/* 列表 */
+ul, ol {
+    margin: 1.2em 0;
+    padding-left: 24px;
+}
+
+li {
+    margin: 0.5em 0;
+    color: #3e3e3e;
+}
+
+li p {
+    margin: 0.2em 0;
+}
+
+/* 行内代码 */
+code {
+    font-family: Consolas, Monaco, Menlo, "Courier New", Courier, monospace;
+    font-size: 0.9em;
+    background-color: #f1f5f9;
+    color: #e11d48; /* 精致红玫瑰色 */
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+}
+
+/* 代码块 */
+pre {
+    font-family: Consolas, Monaco, Menlo, "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    background-color: #1e293b; /* 深 slate 色背景 */
+    color: #f8fafc;
+    padding: 16px;
+    margin: 1.5em 0;
+    overflow-x: auto;
+    border-radius: 8px;
+    line-height: 1.5;
+}
+
+pre code {
+    font-family: inherit;
+    font-size: inherit;
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    word-break: normal;
+    white-space: pre;
+}
+
+/* 图片 */
+img {
+    display: block;
+    max-width: 100%;
+    margin: 1.8em auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* 粗体与斜体 */
+strong {
+    color: #0f172a;
+    font-weight: bold;
+}
+
+em {
+    font-style: italic;
+    color: #475569;
+}
+
+/* 链接 */
+a {
+    color: #0d9488;
+    text-decoration: none;
+    border-bottom: 1px dashed #0d9488;
+}
+
+/* 表格 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8em 0;
+    font-size: 0.9em;
+}
+
+th, td {
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+}
+
+th {
+    background-color: #f1f5f9;
+    font-weight: bold;
+    color: #1e293b;
+    text-align: left;
+}
+
+td {
+    color: #475569;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
