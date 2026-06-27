@@ -13,11 +13,18 @@ class MockWeChatClient:
 def main():
     print("开始本地排版渲染测试...")
     
-    md_path = "test.md"
-    output_html_path = "output_test.html"
+    # 优先从命令行参数读取 Markdown 路径，未传入则默认使用 test.md
+    if len(sys.argv) > 1:
+        md_path = sys.argv[1]
+    else:
+        md_path = "test.md"
+        
+    # 根据输入文件名生成输出 HTML 文件名
+    base_name = os.path.splitext(os.path.basename(md_path))[0]
+    output_html_path = f"output_{base_name}.html"
     
     if not os.path.exists(md_path):
-        print(f"❌ 错误: 未找到测试文件 {md_path}")
+        print(f"错误: 未找到 Markdown 文件 {md_path}")
         sys.exit(1)
         
     try:
