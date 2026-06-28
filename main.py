@@ -83,21 +83,34 @@ def parse_args():
         description="Markdown 自动排版并同步至微信公众号草稿箱工具",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("-m", "--md", required=True, help="Markdown 文件路径")
-    parser.add_argument("-c", "--cover", required=True, help="封面图片路径 (本地图片)")
+    parser.add_argument("-m", "--md", help="Markdown 文件路径 (命令行模式下必填)")
+    parser.add_argument("-c", "--cover", help="封面图片路径 (本地图片，命令行模式下必填)")
     parser.add_argument("-t", "--title", help="图文标题 (如果不指定，将自动提取 Markdown 中的第一个 H1，或使用文件名)")
     parser.add_argument("-a", "--author", help="作者 (如果不指定，使用 config.yaml 中的默认配置)")
-    parser.add_argument("-d", "--digest", help="摘要 (如果不指定，使用 config.yaml 中的配置，或从文章中提取前 120 字)")
+    parser.add_argument("-d", "--digest", help="摘要 (如果不指定，使用 config.yaml 中的配置，或从文章中提取前 120 字节)")
     parser.add_argument("--config", default="config.yaml", help="配置文件路径 (默认: config.yaml)")
     parser.add_argument("--style", help="自定义 CSS 样式表路径 (默认使用 styles/default.css)")
     parser.add_argument("--pygments-style", default="monokai", help="代码块高亮主题 (默认: monokai)")
     parser.add_argument("--content-source-url", help="原文链接 (可选，即阅读原文链接)")
+    parser.add_argument("--ui", action="store_true", help="启动图形化 Web UI 界面模式")
     
     return parser.parse_args()
 
 def main():
     args = parse_args()
     
+    # 如果指定了 --ui，则启动 Web 界面
+    if args.ui:
+        from web_server import start_server
+        start_server()
+        sys.exit(0)
+        
+    # 命令行模式，校验必填参数
+    if not args.md or not args.cover:
+        print("\n[ERROR] 命令行模式下，--md (-m) 和 --cover (-c) 为必填参数。")
+        print("👉 您也可以使用 `python main.py --ui` 启动图形化界面。")
+        sys.exit(1)
+        
     # 1. 加载配置
     config = load_config(args.config)
     wechat_conf = config.get("wechat", {})

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号 Markdown 自动排版与同步工具</title>
+    <!-- 引入高质感字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- 引入样式表 -->
+    <link rel="stylesheet" href="/ui/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏：系统设置与配置 -->
+        <aside class="sidebar">
+            <div class="brand">
+                <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.05 21.95a.5.5 0 00.612.612L7.66 20.662A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" fill="currentColor"/>
+                </svg>
+                <h2>WeChat Sync</h2>
+            </div>
+            
+            <section class="section-card config-section">
+                <h3><span class="icon">⚙️</span>微信公众号配置</h3>
+                <form id="config-form">
+                    <div class="form-group">
+                        <label for="appid">AppID</label>
+                        <input type="password" id="appid" placeholder="输入公众号 AppID" required autocomplete="off">
+                        <span class="toggle-password" onclick="togglePasswordVisibility('appid')">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="secret">AppSecret</label>
+                        <input type="password" id="secret" placeholder="输入公众号 AppSecret" required autocomplete="off">
+                        <span class="toggle-password" onclick="togglePasswordVisibility('secret')">👁️</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">默认作者</label>
+                        <input type="text" id="author" placeholder="作者名称">
+                    </div>
+                    <div class="form-row">
+                        <div class="switch-group">
+                            <label class="switch">
+                                <input type="checkbox" id="show_cover_pic" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <span>正文显示封面</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="switch-group">
+                            <label class="switch">
+                                <input type="checkbox" id="need_open_comment">
+                                <span class="slider"></span>
+                            </label>
+                            <span>开启留言评论</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="switch-group">
+                            <label class="switch">
+                                <input type="checkbox" id="only_less_tags">
+                                <span class="slider"></span>
+                            </label>
+                            <span>只允许有权限的标记</span>
+                        </div>
+                    </div>
+                    <button type="submit" id="save-config-btn" class="btn secondary-btn">保存系统配置</button>
+                </form>
+            </section>
+            
+            <div class="sidebar-footer">
+                <p>WeChat Markdown Sync Tool v1.1</p>
+                <p>本地工作区: <code id="workspace-path">加载中...</code></p>
+            </div>
+        </aside>
+
+        <!-- 主内容区：工作台与控制台 -->
+        <main class="main-content">
+            <header class="top-header">
+                <h1>工作台</h1>
+                <div class="status-indicator">
+                    <span class="status-dot green"></span>
+                    <span>本地服务已连接</span>
+                </div>
+            </header>
+
+            <div class="workspace-grid">
+                <!-- 左半：输入与操作 -->
+                <div class="editor-panel">
+                    <section class="section-card file-selector-card">
+                        <h3><span class="icon">📄</span>选择 Markdown 文件</h3>
+                        <div class="tab-header">
+                            <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区文件</button>
+                            <button class="tab-btn" onclick="switchFileTab('manual')">手动输入路径</button>
+                        </div>
+                        
+                        <div class="tab-content" id="workspace-tab">
+                            <div class="select-wrapper">
+                                <select id="md-file-select" class="custom-select">
+                                    <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="tab-content hidden" id="manual-tab">
+                            <input type="text" id="md-path-manual" class="full-width-input" placeholder="例如: E:/auto-gzh/test.md">
+                        </div>
+                    </section>
+
+                    <section class="section-card file-selector-card">
+                        <h3><span class="icon">🖼️</span>选择封面图片</h3>
+                        <div class="tab-header">
+                            <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区图片</button>
+                            <button class="tab-btn" onclick="switchCoverTab('manual')">手动输入路径</button>
+                        </div>
+                        
+                        <div class="tab-content" id="cover-workspace-tab">
+                            <div class="select-wrapper">
+                                <select id="cover-file-select" class="custom-select">
+                                    <option value="">-- 请选择工作区内的封面图片 --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="tab-content hidden" id="cover-manual-tab">
+                            <input type="text" id="cover-path-manual" class="full-width-input" placeholder="例如: E:/auto-gzh/cover.png">
+                        </div>
+                    </section>
+
+                    <section class="section-card meta-card">
+                        <h3><span class="icon">✍️</span>选填要素 (留空则自动提取)</h3>
+                        <div class="form-group">
+                            <label for="article-title">自定义标题</label>
+                            <input type="text" id="article-title" placeholder="默认提取 Markdown 内的第一个 H1 一级标题">
+                        </div>
+                        <div class="form-group">
+                            <label for="article-digest">自定义摘要</label>
+                            <textarea id="article-digest" placeholder="默认抓取正文前 120 字节（约 40 个汉字）作为摘要，超长自动安全截断"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="content-source-url">原文链接 (阅读原文)</label>
+                            <input type="url" id="content-source-url" placeholder="https://example.com/my-post">
+                        </div>
+                        <div class="form-group">
+                            <label for="pygments-style">代码高亮配色主题</label>
+                            <div class="select-wrapper">
+                                <select id="pygments-style" class="custom-select">
+                                    <option value="monokai">Monokai (推荐 暗色)</option>
+                                    <option value="dracula">Dracula (暗色)</option>
+                                    <option value="github">Github (亮色)</option>
+                                    <option value="default">Default</option>
+                                    <option value="autumn">Autumn</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="action-buttons">
+                        <button id="preview-btn" class="btn primary-outline-btn">👁️ 编译并本地预览</button>
+                        <button id="sync-btn" class="btn primary-btn">🚀 一键同步草稿箱</button>
+                    </div>
+
+                    <!-- 动态终端控制台 -->
+                    <section class="console-card">
+                        <div class="console-header">
+                            <div class="dot red"></div>
+                            <div class="dot yellow"></div>
+                            <div class="dot green"></div>
+                            <span>控制台日志</span>
+                            <button id="clear-console-btn" class="console-clear">清除</button>
+                        </div>
+                        <div class="console-body" id="console-logs">
+                            <div class="log-line info">系统就绪。请选择 Markdown 文件后点击「编译并本地预览」或「一键同步草稿箱」。</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 右半：排版效果实时预览 -->
+                <div class="preview-panel">
+                    <div class="preview-header">
+                        <h3><span class="icon">📱</span>微信端排版效果预览 (IFrame 隔离)</h3>
+                        <span class="preview-note">样式 100% 行内化效果</span>
+                    </div>
+                    <div class="preview-viewport">
+                        <iframe id="preview-frame" src="about:blank"></iframe>
+                        <div class="preview-placeholder" id="preview-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <p>尚未进行编译。选择文件后，点击「编译并本地预览」可在此处看到渲染效果。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 提示框弹窗组件 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- 引入交互逻辑 -->
+    <script src="/ui/static/app.js"></script>
+</body>
+</html>

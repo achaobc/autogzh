@@ -1,0 +1,659 @@
+/* 微信公众号 Markdown 自动排版与同步工具 UI 样式表 (Elegant Teal Dark Theme) */
+
+/* 核心变量与设计系统定义 */
+:root {
+    --bg-primary: #0b0f19;
+    --bg-secondary: #111827;
+    --bg-card: #1f2937;
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+    --accent-teal: #0d9488;
+    --accent-teal-hover: #14b8a6;
+    --accent-teal-glow: rgba(13, 148, 136, 0.15);
+    --accent-purple: #6366f1;
+    --border-color: #374151;
+    
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --info-color: #3b82f6;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* 全局重置与排版 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* 应用大容器 */
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   侧边栏样式 (Sidebar)
+   ========================================================================== */
+.sidebar {
+    width: 320px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.brand .logo {
+    width: 32px;
+    height: 32px;
+    color: var(--accent-teal);
+    filter: drop-shadow(0 0 8px var(--accent-teal-glow));
+}
+
+.brand h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #ffffff 30%, var(--accent-teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* 侧边栏设置块 */
+.section-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-md);
+}
+
+.section-card h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-card h3 .icon {
+    font-size: 1.1rem;
+}
+
+/* 表单组件 */
+.form-group {
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.form-group input, 
+.form-group textarea, 
+.custom-select, 
+.full-width-input {
+    width: 100%;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-group textarea {
+    height: 80px;
+    resize: none;
+    line-height: 1.4;
+}
+
+.form-group input:focus, 
+.form-group textarea:focus, 
+.custom-select:focus,
+.full-width-input:focus {
+    border-color: var(--accent-teal);
+    box-shadow: 0 0 0 3px var(--accent-teal-glow);
+}
+
+/* 密码切换按钮 */
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    bottom: 9px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    user-select: none;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.toggle-password:hover {
+    opacity: 1;
+}
+
+/* 表单行 (Switches) */
+.form-row {
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.switch-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* Switch 开关滑块 */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-color);
+    transition: .3s;
+    border-radius: 20px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--accent-teal);
+}
+
+input:checked + .slider:before {
+    transform: translateX(16px);
+}
+
+/* 按钮组件 */
+.btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 550;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.primary-btn {
+    background-color: var(--accent-teal);
+    color: var(--text-primary);
+}
+
+.primary-btn:hover {
+    background-color: var(--accent-teal-hover);
+    box-shadow: 0 0 12px rgba(13, 148, 136, 0.4);
+}
+
+.primary-outline-btn {
+    background-color: transparent;
+    border: 1px solid var(--accent-teal);
+    color: var(--accent-teal);
+}
+
+.primary-outline-btn:hover {
+    background-color: var(--accent-teal-glow);
+    color: var(--accent-teal-hover);
+}
+
+.secondary-btn {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.secondary-btn:hover {
+    background-color: #4b5563;
+}
+
+/* 侧边栏页脚 */
+.sidebar-footer {
+    margin-top: auto;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.5;
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+}
+
+.sidebar-footer code {
+    background-color: var(--bg-primary);
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   主内容区样式 (Main Content)
+   ========================================================================== */
+.main-content {
+    flex: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--bg-primary);
+}
+
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.top-header h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 20px;
+    color: var(--text-secondary);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.status-dot.green {
+    background-color: var(--success-color);
+    box-shadow: 0 0 8px var(--success-color);
+}
+
+/* 双栏工作布局 */
+.workspace-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 24px;
+    overflow: hidden;
+}
+
+.editor-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* 选项卡 Tab 组件 */
+.tab-header {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    padding-bottom: 8px;
+}
+
+.tab-btn.active {
+    color: var(--accent-teal);
+    font-weight: 600;
+}
+
+.tab-btn.active::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--accent-teal);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 自定义下拉选择框包装 */
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper::after {
+    content: "▼";
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    position: absolute;
+    right: 14px;
+    top: 15px;
+    pointer-events: none;
+}
+
+.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 32px;
+    cursor: pointer;
+}
+
+/* 操作按钮容器 */
+.action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 4px;
+}
+
+/* 控制台终端卡片 */
+.console-card {
+    background-color: #12131a;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 180px;
+    min-height: 140px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+.console-header {
+    background-color: #1c1d24;
+    padding: 8px 16px;
+    border-bottom: 1px solid #27272a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.console-header .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.console-header .dot.red { background-color: #ef4444; }
+.console-header .dot.yellow { background-color: #f59e0b; }
+.console-header .dot.green { background-color: #10b981; }
+
+.console-header span {
+    margin-left: 6px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 500;
+}
+
+.console-clear {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.console-clear:hover {
+    color: var(--text-primary);
+}
+
+.console-body {
+    flex: 1;
+    padding: 12px 16px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.78rem;
+    overflow-y: auto;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-line {
+    margin-bottom: 6px;
+}
+
+.log-line.info { color: #3b82f6; }
+.log-line.success { color: #10b981; }
+.log-line.warning { color: #f59e0b; }
+.log-line.error { color: #ef4444; }
+
+/* IP白名单弹窗在控制台的嵌入卡片，使用Alert效果 */
+.ip-warning-card {
+    background-color: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+}
+
+.ip-warning-card h4 {
+    color: var(--error-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.ip-warning-card p {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.ip-warning-card code {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-family: 'Fira Code', monospace;
+}
+
+/* ==========================================================================
+   排版预览区 (Preview Panel)
+   ========================================================================== */
+.preview-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.preview-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background-color: var(--border-color);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.preview-viewport {
+    flex: 1;
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-xl);
+}
+
+.preview-viewport iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: #ffffff;
+}
+
+.preview-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    text-align: center;
+    z-index: 10;
+}
+
+.preview-placeholder svg {
+    width: 48px;
+    height: 48px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.preview-placeholder p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    max-width: 280px;
+    line-height: 1.5;
+}
+
+/* Toast 提示框 */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.88rem;
+    font-weight: 550;
+    z-index: 999;
+    box-shadow: var(--shadow-xl);
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateY(0);
+}
+
+.toast.success { background-color: var(--success-color); }
+.toast.error { background-color: var(--error-color); }
+.toast.info { background-color: var(--info-color); }
+
+.toast.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+}
