@@ -1,0 +1,170 @@
+/* 微信公众号排版样式表 - 科技蓝深邃主题 (Tech Blue) */
+
+.markdown-body {
+    font-family: -apple-system-font, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+    font-size: 16px;
+    color: #1e293b;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+    word-wrap: break-word;
+    text-align: justify;
+    padding: 10px;
+}
+
+p {
+    margin: 1.5em 0;
+    line-height: 1.85;
+    color: #334155;
+}
+
+h1 {
+    font-size: 1.45em;
+    font-weight: 800;
+    color: #1d4ed8;
+    margin: 2em 0 1em;
+    padding-bottom: 0.4em;
+    border-bottom: 2px solid #3b82f6;
+    text-align: center;
+    letter-spacing: 0.08em;
+}
+
+h2 {
+    font-size: 1.25em;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 1.8em 0 1em;
+    padding: 6px 12px;
+    border-left: 5px solid #2563eb;
+    background: #eff6ff;
+    border-radius: 0 6px 6px 0;
+    line-height: 1.4;
+}
+
+h3 {
+    font-size: 1.12em;
+    font-weight: bold;
+    color: #1e3a8a;
+    margin: 1.5em 0 0.8em;
+}
+
+h4 {
+    font-size: 1em;
+    font-weight: bold;
+    color: #3b82f6;
+    margin: 1.2em 0 0.6em;
+}
+
+blockquote {
+    margin: 1.6em 0;
+    padding: 12px 18px;
+    border-left: 4px solid #3b82f6;
+    background-color: #f0f7ff;
+    color: #1e40af;
+    border-radius: 0 6px 6px 0;
+}
+
+blockquote p {
+    margin: 0.5em 0;
+    font-size: 0.95em;
+}
+
+ul, ol {
+    margin: 1.2em 0;
+    padding-left: 24px;
+}
+
+li {
+    margin: 0.5em 0;
+    color: #334155;
+}
+
+li p {
+    margin: 0.2em 0;
+}
+
+code {
+    font-family: Consolas, Monaco, Menlo, "Courier New", Courier, monospace;
+    font-size: 0.9em;
+    background-color: #eff6ff;
+    color: #2563eb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+    border: 1px solid #dbeafe;
+}
+
+pre {
+    font-family: Consolas, Monaco, Menlo, "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 16px;
+    margin: 1.5em 0;
+    overflow-x: auto;
+    border-radius: 8px;
+    line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
+pre code {
+    font-family: inherit;
+    font-size: inherit;
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    word-break: normal;
+    white-space: pre;
+    border: none;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+    margin: 1.8em auto;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+}
+
+strong {
+    color: #1d4ed8;
+    font-weight: bold;
+}
+
+em {
+    font-style: italic;
+    color: #64748b;
+}
+
+a {
+    color: #2563eb;
+    text-decoration: none;
+    border-bottom: 1px dashed #2563eb;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8em 0;
+    font-size: 0.9em;
+}
+
+th, td {
+    border: 1px solid #bfdbfe;
+    padding: 10px 14px;
+}
+
+th {
+    background-color: #dbeafe;
+    font-weight: bold;
+    color: #1e3a8a;
+    text-align: left;
+}
+
+td {
+    color: #334155;
+}
+
+tr:nth-child(even) {
+    background-color: #f8faff;
+}

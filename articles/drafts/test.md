@@ -1,6 +1,19 @@
+---
+title: "微信公众号 Markdown 自动排版与同步测试规范"
+author: "阿超"
+digest: "这是一篇用于全景测试样式行内化、外链转脚注及多主题渲染的样例文章。"
+cover: "assets/cover.png"
+style: "tech"
+pygments_style: "monokai"
+enable_footnotes: true
+content_source_url: "https://github.com/achaobc/autogzh"
+---
+
 # 这是一篇用于测试微信同步的 Markdown 文章
 
 这是一段普通的正文内容，用来测试段落的排版样式。微信编辑器会过滤所有的外联样式和 style 标签，所以我们的工具必须将所有的 CSS 样式渲染并**注入到每个标签的行内**。
+
+---
 
 ## 1. 列表与字体样式测试
 
@@ -16,9 +29,19 @@
 
 ---
 
-## 2. 引用块与代码高亮测试
+## 2. 外部超链接自动转文末脚注测试
 
-> 这是一个引用块（blockquote）。常用于引用名言、参考资料或者进行补充说明。它的左侧会有一条漂亮的灰色/青色竖线。
+在微信公众号中，由于微信官方的安全策略，普通公众号文章内的外部超链接均无法直接点击跳转。为了解决这个痛点，系统会自动将正文中的所有超链接转换为标准的**角标与文末参考资料脚注列表**：
+
+- 访问工具开源主页：[AutoGZH GitHub 仓库](https://github.com/achaobc/autogzh)
+- 查阅微信官方开放平台标准：[微信公众号官方开发文档](https://developers.weixin.qq.com/doc/offiaccount/Getting_Started/Overview.html)
+- 了解 Markdown 语法规范：[Markdown 官方指南](https://www.markdownguide.org)
+
+---
+
+## 3. 引用块与代码高亮测试
+
+> 这是一个引用块（blockquote）。常用于引用名言、参考资料或者进行补充说明。它的左侧会有一条漂亮的装饰竖线，根据不同排版主题自动适配色彩。
 
 下面是 Python 代码块，我们会使用 **Pygments** 在服务端进行语法高亮，并通过 **Premailer** 将高亮样式完全注入到 HTML 中，这样即使在微信中也依然能保持极具美感的配色：
 
@@ -39,7 +62,7 @@ def hello_wechat(appid):
 
 ---
 
-## 3. 表格与图片测试
+## 4. 表格与图片排版测试
 
 下面是一个排版整齐的表格：
 
@@ -47,11 +70,11 @@ def hello_wechat(appid):
 | :--- | :--- | :--- |
 | Markdown 解析 | `markdown` | 将 Markdown 标记语言渲染为标准 HTML |
 | 样式行内化 | `premailer` | 解析 CSS 规则并逐个注入到 HTML 标签的 style 属性 |
-| 网页元素解析 | `beautifulsoup4` | 用于提取本地图片路径，进行 CDN 替换 |
+| 网页元素解析 | `beautifulsoup4` | 用于提取本地图片路径，进行 CDN 替换与外链转脚注 |
 | 网络请求 | `requests` | 负责与微信公众平台 API 进行安全通信 |
 
 下面是图片排版测试。这是一张测试正文插图：
 
 ![测试正文插图](images/test_body.png)
 
-以上就是全部的排版测试。请在转换后检查生成的 HTML 文件，验证其是否已 100% 转换为行内样式。
+以上就是全部的排版测试。请在转换后检查生成的 HTML 文件，验证其样式行内化、外链脚注与图片替换是否均已生效。

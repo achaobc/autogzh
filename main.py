@@ -5,7 +5,7 @@ import argparse
 import logging
 
 from autogzh.client import WeChatClient, WeChatAPIError
-from autogzh.renderer import MarkdownRenderer, extract_title_from_md, extract_digest_from_html
+from autogzh.renderer import MarkdownRenderer, extract_title_from_md, extract_digest_from_html, extract_frontmatter_from_file
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -43,8 +43,9 @@ def parse_args():
     parser.add_argument("-a", "--author", help="作者 (如果不指定，使用 config.yaml 中的默认配置)")
     parser.add_argument("-d", "--digest", help="摘要 (如果不指定，使用 config.yaml 中的配置，或从文章中提取前 120 字节)")
     parser.add_argument("--config", default="config.yaml", help="配置文件路径 (默认: config.yaml)")
-    parser.add_argument("--style", help="自定义 CSS 样式表路径 (默认使用 styles/default.css)")
+    parser.add_argument("--style", default="default", help="排版样式表主题 (可选 default, tech, minimal, warm 或自定义 CSS 路径)")
     parser.add_argument("--pygments-style", default="monokai", help="代码块高亮主题 (默认: monokai)")
+    parser.add_argument("--no-footnotes", action="store_true", help="禁用外链自动转换为文末脚注功能")
     parser.add_argument("--content-source-url", help="原文链接 (可选，即阅读原文链接)")
     parser.add_argument("--ui", action="store_true", help="启动图形化 Web UI 界面模式 (默认浏览器中打开)")
     parser.add_argument("--gui", action="store_true", help="启动原生图形化 GUI 桌面应用窗口模式")
@@ -66,9 +67,14 @@ def main():
         start_server()
         sys.exit(0)
         
-    # 命令行模式，校验必填参数
-    if not args.md or not args.cover:
-        print("\n[ERROR] 命令行模式下，--md (-m) 和 --cover (-c) 为必填参数。")
+    # 命令行模式：解析 Frontmatter 辅助补全缺省要素
+    frontmatter = {}
+    if args.md and os.path.exists(args.md):
+        frontmatter, _ = extract_frontmatter_from_file(args.md)
+
+    cover_path = args.cover or frontmatter.get("cover")
+    if not args.md or not cover_path:
+        print("\n[ERROR] 命令行模式下，--md (-m) 和 --cover (-c) 为必填参数（或在 Markdown Frontmatter 中定义 cover）。")
         print("👉 您也可以使用 `python main.py --ui` 启动浏览器控制台，或 `python main.py --gui` 启动桌面应用。")
         sys.exit(1)
         
@@ -96,19 +102,26 @@ def main():
         logger.error(f"初始化微信客户端或获取 Token 发生异常: {e}")
         sys.exit(1)
 
-    # 3. 处理图文要素：标题、作者、摘要
-    title = args.title
+    # 3. 处理图文要素：标题、作者、样式
+    title = args.title or frontmatter.get("title")
     if not title:
         title = extract_title_from_md(args.md)
         logger.info(f"未指定标题，自动从 Markdown 提取标题: 「{title}」")
         
-    author = args.author or defaults_conf.get("author", "")
+    author = args.author or frontmatter.get("author") or defaults_conf.get("author", "")
     need_open_comment = defaults_conf.get("need_open_comment", 0)
     only_less_tags = defaults_conf.get("only_less_tags", 0)
     
+    style = args.style if args.style != "default" else (frontmatter.get("style") or "default")
+    pygments_style = args.pygments_style if args.pygments_style != "monokai" else (frontmatter.get("pygments_style") or "monokai")
+    enable_footnotes = not args.no_footnotes
+    if "enable_footnotes" in frontmatter and isinstance(frontmatter["enable_footnotes"], bool):
+        enable_footnotes = frontmatter["enable_footnotes"]
+    content_source_url = args.content_source_url or frontmatter.get("content_source_url")
+
     # 4. 上传封面图片，获取 media_id
     try:
-        cover_media_id = client.upload_cover_image(args.cover)
+        cover_media_id = client.upload_cover_image(cover_path)
     except WeChatAPIError as e:
         print(e)
         sys.exit(1)
@@ -116,9 +129,13 @@ def main():
         logger.error(f"上传封面图片失败: {e}")
         sys.exit(1)
 
-    # 5. 渲染 Markdown 并处理正文图片
+    # 5. 渲染 Markdown 并处理正文图片 (支持 MD5 秒传与并发上传)
     try:
-        renderer = MarkdownRenderer(css_path=args.style, pygments_style=args.pygments_style)
+        renderer = MarkdownRenderer(
+            css_path=style, 
+            pygments_style=pygments_style,
+            enable_footnotes=enable_footnotes
+        )
         html_content = renderer.render(args.md, client)
     except WeChatAPIError as e:
         print(e)
@@ -128,7 +145,7 @@ def main():
         sys.exit(1)
 
     # 6. 处理摘要
-    digest = args.digest
+    digest = args.digest or frontmatter.get("digest")
     if not digest:
         digest = defaults_conf.get("digest")
         if not digest:
@@ -145,6 +162,7 @@ def main():
     logger.info(f"文章要素摘要:")
     logger.info(f"  - 标题: {title}")
     logger.info(f"  - 作者: {author or '未设置'}")
+    logger.info(f"  - 主题: {style} (代码高亮: {pygments_style})")
     logger.info(f"  - 摘要: {digest[:40]}...")
 
     # 7. 提交微信草稿箱
@@ -155,7 +173,7 @@ def main():
             thumb_media_id=cover_media_id,
             author=author,
             digest=digest,
-            content_source_url=args.content_source_url,
+            content_source_url=content_source_url,
             need_open_comment=need_open_comment,
             only_less_tags=only_less_tags
         )

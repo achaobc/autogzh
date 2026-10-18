@@ -6,7 +6,7 @@ import yaml
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
 from .client import WeChatClient, WeChatAPIError, WeChatIPWhitelistError
-from .renderer import MarkdownRenderer, extract_title_from_md, extract_digest_from_html
+from .renderer import MarkdownRenderer, extract_title_from_md, extract_digest_from_html, extract_frontmatter_from_file
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
@@ -118,6 +118,44 @@ def api_post_config():
     else:
         return jsonify({"success": False, "message": "配置保存失败"}), 500
 
+@app.route("/api/themes", methods=["GET"])
+def api_get_themes():
+    """获取所有可用排版样式主题"""
+    themes = [
+        {"id": "default", "name": "优雅茶青 (Elegant Teal - 默认)"},
+        {"id": "tech", "name": "深邃科技蓝 (Tech Blue)"},
+        {"id": "minimal", "name": "极简冷灰 (Minimalist Gray)"},
+        {"id": "warm", "name": "暖意秋橙 (Warm Autumn)"}
+    ]
+    styles_dir = os.path.join(WORKSPACE_DIR, "styles")
+    if os.path.exists(styles_dir):
+        known_ids = {t["id"] for t in themes}
+        for f in sorted(os.listdir(styles_dir)):
+            if f.endswith(".css"):
+                theme_id = os.path.splitext(f)[0]
+                if theme_id not in known_ids:
+                    themes.append({"id": theme_id, "name": f"自定义样式 ({f})"})
+    return jsonify(themes)
+
+@app.route("/api/parse-frontmatter", methods=["POST"])
+def api_parse_frontmatter():
+    """解析 Markdown 文件的 Frontmatter 元数据"""
+    data = request.json or {}
+    md_path_input = data.get("md_path", "").strip()
+    if not md_path_input:
+        return jsonify({"success": False, "message": "缺少文件路径"}), 400
+        
+    abs_md_path = os.path.abspath(md_path_input if os.path.isabs(md_path_input) else os.path.join(WORKSPACE_DIR, md_path_input))
+    if not os.path.exists(abs_md_path):
+        return jsonify({"success": False, "message": "文件不存在"}), 404
+        
+    frontmatter, _ = extract_frontmatter_from_file(abs_md_path)
+    return jsonify({
+        "success": True,
+        "has_frontmatter": bool(frontmatter),
+        "frontmatter": frontmatter
+    })
+
 @app.route("/api/files", methods=["GET"])
 def api_get_files():
     """获取工作区文件列表"""
@@ -170,6 +208,8 @@ def api_post_preview():
     data = request.json or {}
     md_path_input = data.get("md_path", "").strip()
     pygments_style = data.get("pygments_style", "monokai")
+    style_input = data.get("style", "default")
+    enable_footnotes = bool(data.get("enable_footnotes", True))
     
     if not md_path_input:
         return jsonify({"success": False, "message": "请选择或输入 Markdown 文件路径"}), 400
@@ -185,7 +225,11 @@ def api_post_preview():
                 encoded_path = quote(local_path)
                 return f"/api/local-image-file?path={encoded_path}"
                 
-        renderer = MarkdownRenderer(pygments_style=pygments_style)
+        renderer = MarkdownRenderer(
+            css_path=style_input, 
+            pygments_style=pygments_style,
+            enable_footnotes=enable_footnotes
+        )
         html_content = renderer.render(abs_md_path, MockWeChatClient())
         
         return jsonify({"success": True, "html": html_content})
@@ -223,17 +267,28 @@ def api_post_sync():
     title_input = data.get("title", "").strip()
     author_input = data.get("author", "").strip()
     digest_input = data.get("digest", "").strip()
+    style_input = data.get("style", "default")
     pygments_style = data.get("pygments_style", "monokai")
     content_source_url = data.get("content_source_url", "").strip()
+    enable_footnotes = bool(data.get("enable_footnotes", True))
     
-    if not md_path_input or not cover_path_input:
-        return jsonify({"success": False, "message": "Markdown 文件路径和封面图路径均不能为空"}), 400
+    if not md_path_input:
+        return jsonify({"success": False, "message": "Markdown 文件路径不能为空"}), 400
         
     abs_md_path = os.path.abspath(md_path_input if os.path.isabs(md_path_input) else os.path.join(WORKSPACE_DIR, md_path_input))
-    abs_cover_path = os.path.abspath(cover_path_input if os.path.isabs(cover_path_input) else os.path.join(WORKSPACE_DIR, cover_path_input))
-    
     if not os.path.exists(abs_md_path):
         return jsonify({"success": False, "message": f"未找到 Markdown 文件: {md_path_input}"}), 404
+
+    # 优先解析 Frontmatter 辅助补全缺省要素
+    frontmatter, _ = extract_frontmatter_from_file(abs_md_path)
+    
+    if not cover_path_input and frontmatter.get("cover"):
+        cover_path_input = str(frontmatter.get("cover")).strip()
+        
+    if not cover_path_input:
+        return jsonify({"success": False, "message": "封面图路径不能为空，请选择封面图片或在 Markdown Frontmatter 中指定 cover"}), 400
+        
+    abs_cover_path = os.path.abspath(cover_path_input if os.path.isabs(cover_path_input) else os.path.join(WORKSPACE_DIR, cover_path_input))
     if not os.path.exists(abs_cover_path):
         return jsonify({"success": False, "message": f"未找到封面图片文件: {cover_path_input}"}), 404
         
@@ -250,23 +305,36 @@ def api_post_sync():
     try:
         client = WeChatClient(appid=appid, secret=secret)
         
-        # 确定文章标题
-        title = title_input
+        # 确定文章标题 (优先前端传参 -> 其次 Frontmatter -> 再次提取首个 H1)
+        title = title_input or frontmatter.get("title")
         if not title:
             title = extract_title_from_md(abs_md_path)
             
         # 确定作者
-        author = author_input or defaults_conf.get("author", "")
+        author = author_input or frontmatter.get("author") or defaults_conf.get("author", "")
         
+        # 确定样式与高亮主题
+        final_style = style_input or frontmatter.get("style", "default")
+        final_pygments = pygments_style or frontmatter.get("pygments_style", "monokai")
+        if "enable_footnotes" in frontmatter and isinstance(frontmatter["enable_footnotes"], bool):
+            enable_footnotes = frontmatter["enable_footnotes"]
+
+        if not content_source_url and frontmatter.get("content_source_url"):
+            content_source_url = str(frontmatter.get("content_source_url")).strip()
+
         # 上传封面图片
         cover_media_id = client.upload_cover_image(abs_cover_path)
         
-        # 渲染 HTML 并上传/替换正文图片
-        renderer = MarkdownRenderer(pygments_style=pygments_style)
+        # 渲染 HTML 并上传/替换正文图片 (支持 MD5 秒传与并发上传)
+        renderer = MarkdownRenderer(
+            css_path=final_style, 
+            pygments_style=final_pygments,
+            enable_footnotes=enable_footnotes
+        )
         html_content = renderer.render(abs_md_path, client)
         
-        # 处理摘要
-        digest = digest_input
+        # 处理摘要 (优先前端 -> 其次 Frontmatter -> 再次配置 -> 自动提取)
+        digest = digest_input or frontmatter.get("digest")
         if not digest:
             digest = defaults_conf.get("digest")
             if not digest:

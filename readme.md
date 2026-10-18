@@ -58,16 +58,23 @@ graph TD
 
 ## 🌟 核心特性
 
-* 📱 **双模运行体验**：
+* 📱 **三模全场景交互体验**：
+  * **原生 GUI 客户端**：基于 `pywebview` 打造的现代独立桌面客户端，双击直接运行，免去依赖任何浏览器标签页。
+  * **Web UI 操作台**：内置现代深黛青 (Elegant Teal) 暗黑风格控制台。提供文件与封面图智能扫描选择、本地预览、无刷新配置面板及动态运行日志。
   * **CLI 命令行模式**：专为自动化极客和集成工作流（如 Git Hooks, CI/CD, 自动脚本）设计，一行命令瞬间同步。
-  * **Web UI 操作台**：内置现代深黛青 (Elegant Teal) 暗黑风格控制台。提供文件与封面图智能扫描选择、无刷新配置面板及动态运行日志。
-* 🎨 **100% 样式还原 (CSS 行内化)**：基于 `premailer` 与 `beautifulsoup4`，将你的 CSS 样式与代码高亮规则深层解析并 100% 注入到 HTML 每个标签的 `style` 属性中，轻松击碎微信对 `<style>` 标签的过滤。
+* 📑 **外链自动转文末脚注 (Link-to-Footnotes)**：完美解决微信普通公众号正文无法直接点击外部超链接的痛点，自动将超链接转换为 `[1]` 上标角标，并在文末生成规范美观的「引用链接」参考资料列表。
+* 🏷️ **Markdown YAML Frontmatter 原生自描述**：支持在文章头部编写 YAML Frontmatter 元数据（支持 `title`、`author`、`digest`、`cover`、`style`、`pygments_style` 等），与 Obsidian、Typora、VSCode 写作流浑然一体，免去手动输入参数的繁琐。
+* 🎨 **多套排版设计风格主题**：
+  * `default`：**优雅茶青 (Elegant Teal)** - 雅致耐看，通用阅读首选。
+  * `tech`：**深邃科技蓝 (Tech Blue)** - 现代科技与技术沉浸感。
+  * `minimal`：**极简冷灰 (Minimalist Gray)** - 黑白灰高级留白，高对比极简美。
+  * `warm`：**暖意秋橙 (Warm Autumn)** - 温暖治愈系大地色调，适合人文随笔生活号。
+* ⚡ **图片 MD5 缓存去重与并发秒传**：内置本地 `.image_cache.json` 哈希映射，同一张图片不重复上传微信 CDN；搭载多线程并发上传，多图长文同步速度成倍跃升。
 * 💻 **服务端代码块高亮**：搭载 **Pygments** 高亮引擎，支持 `monokai`, `github`, `dracula` 等上百种经典配色，高亮样式同样直接转为 Inline Style。
-* 🖼️ **多媒体一键托管**：自动提取 Markdown 内引用的本地相对路径图片，一键批量上传至微信 CDN 自动替换为线上 URL，同时自动上传封面获取 `thumb_media_id`。
 * 🛡️ **健壮的防御性开发**：
   * **摘要字节截断**：未提供摘要时自动解析正文，针对微信严格的 **120字节** 限制进行安全的按字节截断，彻底阻断微信 `45004` 错误。
   * **IP 拦截辅助定位**：捕获经典的 `40164` (IP 未加白名单) 报错，提取您当前的公网请求 IP，并给出公众号后台配置的直接引导说明。
-  * **智能缓存**：维护 `.wechat_token.json` 缓存，自动管理 Token 过期与刷新，避免触发微信 API 访问频率上限。
+  * **智能 Token 缓存**：维护 `.wechat_token.json` 缓存，自动管理 Token 过期与刷新，避免触发微信 API 访问频率上限。
 
 ---
 
@@ -92,17 +99,20 @@ pip install -r requirements.txt
 
 ### 3. 运行程序
 
-#### 💻 【方式 A】拉起高质感 Web UI 操作台（推荐）
+#### 💻 【方式 A】拉起高质感 Web UI / GUI 操作台（推荐）
 直接在项目根目录下运行：
 ```bash
+# 桌面独立应用窗口
+python main.py --gui
+
+# 或在默认浏览器中打开操作台
 python main.py --ui
 ```
-控制台会自动启动本地 Web 服务，并在 1 秒后**自动用你的默认浏览器打开** `http://127.0.0.1:5000` 进入工作台，享受丝滑的一键操作。
 
 #### 🐚 【方式 B】终端命令行直接同步
 如果你倾向于在 Shell 中操作，可以直接使用 CLI 模式：
 ```bash
-python main.py --md articles/drafts/test.md --cover assets/cover.png
+python main.py --md articles/drafts/test.md --cover assets/cover.png --style tech
 ```
 
 ---
@@ -113,14 +123,15 @@ python main.py --md articles/drafts/test.md --cover assets/cover.png
 | :--- | :--- | :--- |
 | `--gui` | **启动原生桌面窗口客户端模式** (默认双击运行模式) | - |
 | `--ui` | **启动图形化 Web UI 界面模式**（在浏览器打开操作台） | - |
-| `-m, --md` | 本地 Markdown 文件路径 (命令行模式下必填) | - |
-| `-c, --cover` | 封面图片路径 (本地图片，命令行模式下必填) | - |
-| `-t, --title` | 图文标题（未指定则自动提取 Markdown 首个 `# H1`，或使用文件名） | - |
-| `-a, --author` | 作者（未指定则默认读取 `config.yaml` 默认作者） | - |
+| `-m, --md` | 本地 Markdown 文件路径 (若 Frontmatter 中有定义可不传封面) | - |
+| `-c, --cover` | 封面图片路径 (本地图片，亦可在 Frontmatter 的 `cover` 中指定) | - |
+| `-t, --title` | 图文标题（优先读取 Frontmatter，未指定则提取首个 `# H1`） | - |
+| `-a, --author` | 作者（优先读取 Frontmatter，未指定则读取 `config.yaml`） | - |
 | `-d, --digest` | 文章摘要（未指定则自动按 120 字节限额安全截断正文） | - |
 | `--config` | 配置文件路径 | `config.yaml` |
-| `--style` | 自定义排版样式表路径 | `styles/default.css` |
+| `--style` | 排版样式主题 (可选 `default`, `tech`, `minimal`, `warm` 或自定义 CSS) | `default` |
 | `--pygments-style` | 代码块语法高亮主题 (可选 `monokai`, `github`, `dracula` 等) | `monokai` |
+| `--no-footnotes` | **禁用外部链接自动转换为文末脚注功能** | 默认开启转脚注 |
 | `--content-source-url` | 原文链接（即“阅读原文”超链接） | 无 |
 
 ---

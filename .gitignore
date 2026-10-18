@@ -16,8 +16,9 @@ ENV/
 # Configuration (Sensitive info - DO NOT COMMIT)
 config.yaml
 
-# WeChat Token cache
+# WeChat Token & Image cache
 .wechat_token.json
+.image_cache.json
 
 # PyInstaller & Build artifacts
 build/

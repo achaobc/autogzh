@@ -2,6 +2,8 @@ import os
 import json
 import time
 import re
+import hashlib
+import threading
 import logging
 import requests
 
@@ -63,8 +65,60 @@ class WeChatClient:
         else:
             self.token_cache_path = token_cache_path
             
+        self.image_cache_path = os.path.join(PROJECT_ROOT, ".image_cache.json")
+        self._cache_lock = threading.Lock()
+        self._image_cache = None
+            
         self._access_token = None
         self._token_expires_at = 0
+
+    @staticmethod
+    def calculate_file_md5(file_path):
+        """计算本地文件 MD5 哈希值，用于素材秒传去重"""
+        hasher = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
+    def _load_image_cache(self):
+        """读取本地图片 MD5 缓存"""
+        if self._image_cache is not None:
+            return self._image_cache
+        if os.path.exists(self.image_cache_path):
+            try:
+                with open(self.image_cache_path, "r", encoding="utf-8") as f:
+                    self._image_cache = json.load(f)
+                    return self._image_cache
+            except Exception as e:
+                logger.warning(f"读取图片缓存失败: {e}")
+        self._image_cache = {}
+        return self._image_cache
+
+    def _get_cached_image_url(self, md5_hash):
+        """根据 MD5 获取当前公众号已缓存的微信 CDN URL"""
+        with self._cache_lock:
+            cache = self._load_image_cache()
+            item = cache.get(md5_hash)
+            if item and item.get("appid") == self.appid:
+                return item.get("url")
+        return None
+
+    def _save_image_cache(self, md5_hash, cdn_url, filename):
+        """将上传成功的图片信息写入本地缓存"""
+        with self._cache_lock:
+            cache = self._load_image_cache()
+            cache[md5_hash] = {
+                "appid": self.appid,
+                "url": cdn_url,
+                "filename": filename,
+                "cached_at": int(time.time())
+            }
+            try:
+                with open(self.image_cache_path, "w", encoding="utf-8") as f:
+                    json.dump(cache, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                logger.warning(f"写入图片缓存失败: {e}")
 
     def _handle_response(self, response_data):
         """解析微信 API 响应，发现错误抛出异常"""
@@ -133,15 +187,23 @@ class WeChatClient:
             raise RuntimeError(f"请求微信 Access Token 失败: 网络异常 {e}")
 
     def upload_body_image(self, image_path):
-        """上传图文内图片 (正文插图) 到微信 CDN"""
+        """上传图文内图片 (正文插图) 到微信 CDN，支持 MD5 缓存去重"""
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"正文图片文件不存在: {image_path}")
 
+        filename = os.path.basename(image_path)
+        md5_hash = self.calculate_file_md5(image_path)
+        
+        # 1. 检查本地 MD5 缓存
+        cached_url = self._get_cached_image_url(md5_hash)
+        if cached_url:
+            logger.info(f"正文图片命中本地 MD5 缓存，秒级复用微信 CDN: {filename} -> {cached_url}")
+            return cached_url
+
+        # 2. 未命中缓存，上传微信服务器
         token = self.get_access_token()
         url = f"https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token={token}"
-        
-        filename = os.path.basename(image_path)
-        logger.info(f"正在上传正文图片到微信 CDN: {filename}...")
+        logger.info(f"正在上传正文图片到微信 CDN: {filename} (MD5: {md5_hash[:8]})...")
         
         content_type = "image/png"
         if filename.lower().endswith(('.jpg', '.jpeg')):
@@ -161,6 +223,8 @@ class WeChatClient:
                 
                 cdn_url = data.get("url")
                 logger.info(f"图片上传成功，获取 CDN URL: {cdn_url}")
+                # 写入本地缓存
+                self._save_image_cache(md5_hash, cdn_url, filename)
                 return cdn_url
         except requests.RequestException as e:
             raise RuntimeError(f"上传正文图片失败: 网络异常 {e}")

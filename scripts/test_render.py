@@ -19,11 +19,14 @@ class MockWeChatClient:
 def main():
     print("开始本地排版渲染测试...")
     
-    # 优先从命令行参数读取 Markdown 路径，未传入则默认使用 articles/drafts/test.md
+    theme = "default"
     if len(sys.argv) > 1:
         md_path = sys.argv[1]
     else:
         md_path = os.path.join(project_root, "articles", "drafts", "test.md")
+        
+    if len(sys.argv) > 2:
+        theme = sys.argv[2]
         
     if not os.path.exists(md_path):
         print(f"错误: 未找到 Markdown 文件 {md_path}")
@@ -33,10 +36,10 @@ def main():
     base_name = os.path.splitext(os.path.basename(md_path))[0]
     output_dir = os.path.join(project_root, "articles", "output")
     os.makedirs(output_dir, exist_ok=True)
-    output_html_path = os.path.join(output_dir, f"output_{base_name}.html")
+    output_html_path = os.path.join(output_dir, f"output_{base_name}_{theme}.html")
     
     try:
-        renderer = MarkdownRenderer(pygments_style="monokai")
+        renderer = MarkdownRenderer(css_path=theme, pygments_style="monokai")
         mock_client = MockWeChatClient()
         
         final_html = renderer.render(md_path, mock_client)

@@ -17,16 +17,40 @@ function initApp() {
     // 1. 加载配置信息
     loadConfig();
     
-    // 2. 加载工作区文件列表
+    // 2. 加载可用排版样式主题
+    loadThemes();
+
+    // 3. 加载工作区文件列表
     loadWorkspaceFiles();
     
-    // 3. 注册事件监听器
+    // 4. 注册事件监听器
     setupEventListeners();
 }
 
 // --------------------------------------------------------------------------
 // 数据加载方法
 // --------------------------------------------------------------------------
+
+// 加载可用主题
+async function loadThemes() {
+    try {
+        const response = await fetch("/api/themes");
+        if (!response.ok) return;
+        const themes = await response.json();
+        const themeSelect = document.getElementById("theme-style");
+        if (themeSelect && Array.isArray(themes)) {
+            themeSelect.innerHTML = "";
+            themes.forEach(t => {
+                const opt = document.createElement("option");
+                opt.value = t.id;
+                opt.textContent = t.name;
+                themeSelect.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.warn("加载主题列表失败:", e);
+    }
+}
 
 // 加载配置
 async function loadConfig() {
@@ -97,7 +121,6 @@ async function loadWorkspaceFiles() {
         
         // 填充 Markdown 选择框
         const mdSelect = document.getElementById("md-file-select");
-        // 保留第一项提示
         mdSelect.innerHTML = '<option value="">-- 请选择工作区内的 Markdown 文件 --</option>';
         data.markdown_files.forEach(file => {
             const opt = document.createElement("option");
@@ -116,12 +139,87 @@ async function loadWorkspaceFiles() {
             coverSelect.appendChild(opt);
         });
         
-        // 提示当前扫描到的工作路径
         document.getElementById("workspace-path").textContent = "auto-gzh";
         appendLog(`工作区扫描完毕: 发现 ${data.markdown_files.length} 个 Markdown 文件, ${data.image_files.length} 张图片。`, "info");
     } catch (error) {
         showToast("加载工作区文件失败", "error");
         appendLog("扫描工作区文件失败，请检查程序运行路径权限。", "error");
+    }
+}
+
+// --------------------------------------------------------------------------
+// Frontmatter 元数据智能识别
+// --------------------------------------------------------------------------
+
+async function checkMdFrontmatter(mdPath) {
+    const banner = document.getElementById("frontmatter-banner");
+    const msgSpan = document.getElementById("frontmatter-msg");
+    
+    if (!mdPath || !mdPath.trim()) {
+        if (banner) banner.classList.add("hidden");
+        return;
+    }
+    
+    try {
+        const response = await fetch("/api/parse-frontmatter", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ md_path: mdPath.trim() })
+        });
+        const data = await response.json();
+        
+        if (data.success && data.has_frontmatter) {
+            const fm = data.frontmatter;
+            const recognized = [];
+            
+            if (fm.title) {
+                document.getElementById("article-title").value = fm.title;
+                recognized.push("标题");
+            }
+            if (fm.author) {
+                document.getElementById("author").value = fm.author;
+                recognized.push("作者");
+            }
+            if (fm.digest) {
+                document.getElementById("article-digest").value = fm.digest;
+                recognized.push("摘要");
+            }
+            if (fm.content_source_url) {
+                document.getElementById("content-source-url").value = fm.content_source_url;
+                recognized.push("原文链接");
+            }
+            if (fm.style) {
+                const styleSelect = document.getElementById("theme-style");
+                if (styleSelect) styleSelect.value = fm.style;
+                recognized.push("主题");
+            }
+            if (fm.pygments_style) {
+                const pySelect = document.getElementById("pygments-style");
+                if (pySelect) pySelect.value = fm.pygments_style;
+                recognized.push("代码高亮");
+            }
+            if (typeof fm.enable_footnotes === "boolean") {
+                const fnBox = document.getElementById("enable-footnotes");
+                if (fnBox) fnBox.checked = fm.enable_footnotes;
+                recognized.push("脚注开关");
+            }
+            if (fm.cover) {
+                document.getElementById("cover-path-manual").value = fm.cover;
+                switchCoverTab("manual");
+                recognized.push("封面图");
+            }
+            
+            if (banner && msgSpan) {
+                msgSpan.textContent = `已从 Frontmatter 自动预填: ${recognized.join("、")}`;
+                banner.classList.remove("hidden");
+            }
+            appendLog(`✨ 检测到文章 Frontmatter，已自动填充要素: ${recognized.join("、")}`, "success");
+            showToast("已自动读取文章 Frontmatter 元数据！", "info");
+        } else {
+            if (banner) banner.classList.add("hidden");
+        }
+    } catch (e) {
+        if (banner) banner.classList.add("hidden");
     }
 }
 
@@ -133,6 +231,8 @@ async function loadWorkspaceFiles() {
 async function triggerPreview() {
     const mdPath = getSelectedMdPath();
     const styleTheme = document.getElementById("pygments-style").value;
+    const themeStyle = document.getElementById("theme-style") ? document.getElementById("theme-style").value : "default";
+    const enableFootnotes = document.getElementById("enable-footnotes") ? document.getElementById("enable-footnotes").checked : true;
     
     if (!mdPath) {
         showToast("请先选择或输入 Markdown 文件路径", "error");
@@ -144,7 +244,7 @@ async function triggerPreview() {
     previewBtn.disabled = true;
     previewBtn.textContent = "编译中...";
     
-    appendLog(`开始本地排版编译，正在解析 '${mdPath}'...`, "info");
+    appendLog(`开始本地排版编译 [主题: ${themeStyle}]，正在解析 '${mdPath}'...`, "info");
     
     try {
         const response = await fetch("/api/preview", {
@@ -152,7 +252,9 @@ async function triggerPreview() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 md_path: mdPath,
-                pygments_style: styleTheme
+                style: themeStyle,
+                pygments_style: styleTheme,
+                enable_footnotes: enableFootnotes
             })
         });
         
@@ -178,10 +280,12 @@ async function triggerPreview() {
 async function triggerSync() {
     const mdPath = getSelectedMdPath();
     const coverPath = getSelectedCoverPath();
+    const themeStyle = document.getElementById("theme-style") ? document.getElementById("theme-style").value : "default";
+    const enableFootnotes = document.getElementById("enable-footnotes") ? document.getElementById("enable-footnotes").checked : true;
     
-    if (!mdPath || !coverPath) {
-        showToast("Markdown 文件与封面图均为必填项", "error");
-        appendLog("同步失败: Markdown 或 封面图路径未填写完整。", "warning");
+    if (!mdPath) {
+        showToast("请先选择或输入 Markdown 文件路径", "error");
+        appendLog("同步失败: Markdown 路径未填写。", "warning");
         return;
     }
     
@@ -189,7 +293,7 @@ async function triggerSync() {
     syncBtn.disabled = true;
     syncBtn.textContent = "正在同步微信...";
     
-    appendLog("触发微信草稿箱一键同步...", "info");
+    appendLog("触发微信草稿箱一键同步 (启用 MD5 图片秒传与并发上传)...", "info");
     appendLog("正在上传封面图素材，上传图文内本地插图，并转换排版 HTML...", "info");
     
     const payload = {
@@ -198,7 +302,9 @@ async function triggerSync() {
         title: document.getElementById("article-title").value,
         author: document.getElementById("author").value,
         digest: document.getElementById("article-digest").value,
+        style: themeStyle,
         pygments_style: document.getElementById("pygments-style").value,
+        enable_footnotes: enableFootnotes,
         content_source_url: document.getElementById("content-source-url").value
     };
     
@@ -212,7 +318,6 @@ async function triggerSync() {
         const data = await response.json();
         
         if (response.status === 403 && data.error_type === "IP_WHITELIST") {
-            // 特别捕获 IP 白名单错误，在日志中显示漂亮卡片
             appendLog(`❌ 微信 API 报错: 40164 (IP 白名单错误)`, "error");
             renderIpWhitelistWarning(data.ip);
             showToast("同步失败：当前 IP 未加白", "error");
@@ -239,7 +344,6 @@ async function triggerSync() {
 // 辅助交互与 UI 操作方法
 // --------------------------------------------------------------------------
 
-// 切换文件选择方式 Tab
 function setupEventListeners() {
     // 监听表单配置保存
     document.getElementById("config-form").addEventListener("submit", saveConfig);
@@ -248,6 +352,14 @@ function setupEventListeners() {
     document.getElementById("preview-btn").addEventListener("click", triggerPreview);
     document.getElementById("sync-btn").addEventListener("click", triggerSync);
     document.getElementById("clear-console-btn").addEventListener("click", clearConsole);
+    
+    // 监听 Markdown 文件选择变化，自动触发 Frontmatter 检测
+    document.getElementById("md-file-select").addEventListener("change", (e) => {
+        checkMdFrontmatter(e.target.value);
+    });
+    document.getElementById("md-path-manual").addEventListener("change", (e) => {
+        checkMdFrontmatter(e.target.value);
+    });
 }
 
 window.switchFileTab = function(tabName) {
@@ -326,9 +438,9 @@ window.browseFile = async function(fileType) {
         if (data.success && data.file_path) {
             manualInput.value = data.file_path;
             
-            // 自动切换到“选择电脑本地文件 / 绝对路径”选项卡并高亮展示
             if (isMd) {
                 switchFileTab('manual');
+                checkMdFrontmatter(data.file_path);
             } else {
                 switchCoverTab('manual');
             }
@@ -376,7 +488,6 @@ function renderHtmlInIframe(htmlContent) {
     const iframe = document.getElementById("preview-frame");
     const placeholder = document.getElementById("preview-placeholder");
     
-    // 隐藏占位区
     placeholder.classList.add("hidden");
     
     const doc = iframe.contentDocument || iframe.contentWindow.document;
@@ -395,7 +506,6 @@ function appendLog(message, type = "info") {
     line.textContent = `[${timeStr}] ${message}`;
     
     logsContainer.appendChild(line);
-    // 滚动条自动置底
     logsContainer.scrollTop = logsContainer.scrollHeight;
 }
 

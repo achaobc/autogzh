@@ -693,3 +693,21 @@ input:checked + .slider:before {
     transform: translateY(20px);
     pointer-events: none;
 }
+
+/* Frontmatter 识别横幅 */
+.frontmatter-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(13, 148, 136, 0.12);
+    border: 1px solid var(--accent-teal);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--accent-teal);
+}
+
+.frontmatter-banner.hidden {
+    display: none;
+}
