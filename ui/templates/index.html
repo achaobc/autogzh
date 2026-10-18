@@ -79,155 +79,222 @@
         <!-- 主内容区：工作台与控制台 -->
         <main class="main-content">
             <header class="top-header">
-                <h1>工作台</h1>
-                <div class="status-indicator">
-                    <span class="status-dot green"></span>
-                    <span>本地服务已连接</span>
+                <div class="nav-tabs-wrapper">
+                    <button id="nav-btn-workspace" class="nav-tab-btn active" onclick="switchMainView('workspace')">
+                        <span class="icon">🚀</span> 极速创作与同步
+                    </button>
+                    <button id="nav-btn-library" class="nav-tab-btn" onclick="switchMainView('library')">
+                        <span class="icon">📚</span> 文章管理与排期库
+                        <span id="library-total-badge" class="nav-count-badge">0</span>
+                    </button>
+                </div>
+                <div class="header-right">
+                    <div class="status-indicator">
+                        <span class="status-dot green"></span>
+                        <span>本地服务已连接</span>
+                    </div>
                 </div>
             </header>
 
-            <div class="workspace-grid">
-                <!-- 左半：输入与操作 -->
-                <div class="editor-panel">
-                    <section class="section-card file-selector-card">
-                        <h3><span class="icon">📄</span>选择 Markdown 文件</h3>
-                        <div class="tab-header">
-                            <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区下拉选择</button>
-                            <button class="tab-btn" onclick="switchFileTab('manual')">选择电脑本地文件 / 绝对路径</button>
-                        </div>
-                        
-                        <div class="tab-content" id="workspace-tab">
-                            <div class="input-with-btn">
-                                <div class="select-wrapper" style="flex: 1;">
-                                    <select id="md-file-select" class="custom-select">
-                                        <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
+            <!-- 视图1：工作区极速排版与同步 -->
+            <div id="workspace-view" class="view-panel">
+                <div class="workspace-grid">
+                    <!-- 左半：输入与操作 -->
+                    <div class="editor-panel">
+                        <section class="section-card file-selector-card">
+                            <h3><span class="icon">📄</span>选择 Markdown 文件</h3>
+                            <div class="tab-header">
+                                <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区下拉选择</button>
+                                <button class="tab-btn" onclick="switchFileTab('manual')">选择电脑本地文件 / 绝对路径</button>
+                            </div>
+                            
+                            <div class="tab-content" id="workspace-tab">
+                                <div class="input-with-btn">
+                                    <div class="select-wrapper" style="flex: 1;">
+                                        <select id="md-file-select" class="custom-select">
+                                            <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
+                                        </select>
+                                    </div>
+                                    <button class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
+                                </div>
+                            </div>
+                            <div class="tab-content hidden" id="manual-tab">
+                                <div class="input-with-btn">
+                                    <input type="text" id="md-path-manual" class="full-width-input" placeholder="请选择或直接输入 Markdown 文件绝对路径 (如 C:/Docs/my_article.md)">
+                                    <button id="browse-md-btn" class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
+                                </div>
+                            </div>
+                            <div id="frontmatter-banner" class="frontmatter-banner hidden">
+                                <span>✨</span>
+                                <span id="frontmatter-msg">已从 Markdown Frontmatter 自动识别标题/封面/主题元数据</span>
+                            </div>
+                        </section>
+
+                        <section class="section-card file-selector-card">
+                            <h3><span class="icon">🖼️</span>选择封面图片</h3>
+                            <div class="tab-header">
+                                <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区下拉选择</button>
+                                <button class="tab-btn" onclick="switchCoverTab('manual')">选择电脑本地文件 / 绝对路径</button>
+                            </div>
+                            
+                            <div class="tab-content" id="cover-workspace-tab">
+                                <div class="input-with-btn">
+                                    <div class="select-wrapper" style="flex: 1;">
+                                        <select id="cover-file-select" class="custom-select">
+                                            <option value="">-- 请选择工作区内的封面图片 --</option>
+                                        </select>
+                                    </div>
+                                    <button class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
+                                </div>
+                            </div>
+                            <div class="tab-content hidden" id="cover-manual-tab">
+                                <div class="input-with-btn">
+                                    <input type="text" id="cover-path-manual" class="full-width-input" placeholder="请选择或直接输入封面图片绝对路径 (如 C:/Pictures/cover.png)">
+                                    <button id="browse-cover-btn" class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="section-card meta-card">
+                            <h3><span class="icon">✍️</span>排版与发布要素</h3>
+                            <div class="form-group">
+                                <label for="theme-style">排版设计风格主题</label>
+                                <div class="select-wrapper">
+                                    <select id="theme-style" class="custom-select">
+                                        <option value="default">优雅茶青 (Elegant Teal - 默认)</option>
+                                        <option value="tech">深邃科技蓝 (Tech Blue)</option>
+                                        <option value="story">硬核实战橙 (Deep Review - 经验复盘风)</option>
+                                        <option value="minimal">极简冷灰 (Minimalist Gray)</option>
+                                        <option value="warm">暖意秋橙 (Warm Autumn)</option>
                                     </select>
                                 </div>
-                                <button class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
                             </div>
-                        </div>
-                        <div class="tab-content hidden" id="manual-tab">
-                            <div class="input-with-btn">
-                                <input type="text" id="md-path-manual" class="full-width-input" placeholder="请选择或直接输入 Markdown 文件绝对路径 (如 C:/Docs/my_article.md)">
-                                <button id="browse-md-btn" class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
+                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 16px;">
+                                <div>
+                                    <label for="enable-footnotes" style="margin-bottom: 2px; font-weight: 600; cursor: pointer;">外链自动转文末脚注</label>
+                                    <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">将正文外部超链接转换为文末参考链接 (符合微信规范)</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="enable-footnotes" checked>
+                                    <span class="slider"></span>
+                                </label>
                             </div>
-                        </div>
-                        <div id="frontmatter-banner" class="frontmatter-banner hidden">
-                            <span>✨</span>
-                            <span id="frontmatter-msg">已从 Markdown Frontmatter 自动识别标题/封面/主题元数据</span>
-                        </div>
-                    </section>
-
-                    <section class="section-card file-selector-card">
-                        <h3><span class="icon">🖼️</span>选择封面图片</h3>
-                        <div class="tab-header">
-                            <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区下拉选择</button>
-                            <button class="tab-btn" onclick="switchCoverTab('manual')">选择电脑本地文件 / 绝对路径</button>
-                        </div>
-                        
-                        <div class="tab-content" id="cover-workspace-tab">
-                            <div class="input-with-btn">
-                                <div class="select-wrapper" style="flex: 1;">
-                                    <select id="cover-file-select" class="custom-select">
-                                        <option value="">-- 请选择工作区内的封面图片 --</option>
+                            <div class="form-group">
+                                <label for="article-title">自定义标题</label>
+                                <input type="text" id="article-title" placeholder="默认提取 Markdown 内的第一个 H1 一级标题">
+                            </div>
+                            <div class="form-group">
+                                <label for="article-digest">自定义摘要</label>
+                                <textarea id="article-digest" placeholder="默认抓取正文前 120 字节（约 40 个汉字）作为摘要，超长自动安全截断"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="content-source-url">原文链接 (阅读原文)</label>
+                                <input type="url" id="content-source-url" placeholder="https://example.com/my-post">
+                            </div>
+                            <div class="form-group">
+                                <label for="pygments-style">代码高亮配色主题</label>
+                                <div class="select-wrapper">
+                                    <select id="pygments-style" class="custom-select">
+                                        <option value="monokai">Monokai (推荐 暗色)</option>
+                                        <option value="dracula">Dracula (暗色)</option>
+                                        <option value="github">Github (亮色)</option>
+                                        <option value="default">Default</option>
+                                        <option value="autumn">Autumn</option>
                                     </select>
                                 </div>
-                                <button class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
                             </div>
-                        </div>
-                        <div class="tab-content hidden" id="cover-manual-tab">
-                            <div class="input-with-btn">
-                                <input type="text" id="cover-path-manual" class="full-width-input" placeholder="请选择或直接输入封面图片绝对路径 (如 C:/Pictures/cover.png)">
-                                <button id="browse-cover-btn" class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
-                            </div>
-                        </div>
-                    </section>
+                        </section>
 
-                    <section class="section-card meta-card">
-                        <h3><span class="icon">✍️</span>排版与发布要素</h3>
-                        <div class="form-group">
-                            <label for="theme-style">排版设计风格主题</label>
-                            <div class="select-wrapper">
-                                <select id="theme-style" class="custom-select">
-                                    <option value="default">优雅茶青 (Elegant Teal - 默认)</option>
-                                    <option value="tech">深邃科技蓝 (Tech Blue)</option>
-                                    <option value="story">硬核实战橙 (Deep Review - 经验复盘风)</option>
-                                    <option value="minimal">极简冷灰 (Minimalist Gray)</option>
-                                    <option value="warm">暖意秋橙 (Warm Autumn)</option>
-                                </select>
-                            </div>
+                        <div class="action-buttons">
+                            <button id="preview-btn" class="btn primary-outline-btn">👁️ 编译并本地预览</button>
+                            <button id="sync-btn" class="btn primary-btn">🚀 一键同步草稿箱</button>
                         </div>
-                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 16px;">
-                            <div>
-                                <label for="enable-footnotes" style="margin-bottom: 2px; font-weight: 600; cursor: pointer;">外链自动转文末脚注</label>
-                                <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">将正文外部超链接转换为文末参考链接 (符合微信规范)</span>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="enable-footnotes" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label for="article-title">自定义标题</label>
-                            <input type="text" id="article-title" placeholder="默认提取 Markdown 内的第一个 H1 一级标题">
-                        </div>
-                        <div class="form-group">
-                            <label for="article-digest">自定义摘要</label>
-                            <textarea id="article-digest" placeholder="默认抓取正文前 120 字节（约 40 个汉字）作为摘要，超长自动安全截断"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="content-source-url">原文链接 (阅读原文)</label>
-                            <input type="url" id="content-source-url" placeholder="https://example.com/my-post">
-                        </div>
-                        <div class="form-group">
-                            <label for="pygments-style">代码高亮配色主题</label>
-                            <div class="select-wrapper">
-                                <select id="pygments-style" class="custom-select">
-                                    <option value="monokai">Monokai (推荐 暗色)</option>
-                                    <option value="dracula">Dracula (暗色)</option>
-                                    <option value="github">Github (亮色)</option>
-                                    <option value="default">Default</option>
-                                    <option value="autumn">Autumn</option>
-                                </select>
-                            </div>
-                        </div>
-                    </section>
 
-                    <div class="action-buttons">
-                        <button id="preview-btn" class="btn primary-outline-btn">👁️ 编译并本地预览</button>
-                        <button id="sync-btn" class="btn primary-btn">🚀 一键同步草稿箱</button>
+                        <!-- 动态终端控制台 -->
+                        <section class="console-card">
+                            <div class="console-header">
+                                <div class="dot red"></div>
+                                <div class="dot yellow"></div>
+                                <div class="dot green"></div>
+                                <span>控制台日志</span>
+                                <button id="clear-console-btn" class="console-clear">清除</button>
+                            </div>
+                            <div class="console-body" id="console-logs">
+                                <div class="log-line info">系统就绪。请选择 Markdown 文件后点击「编译并本地预览」或「一键同步草稿箱」。</div>
+                            </div>
+                        </section>
                     </div>
 
-                    <!-- 动态终端控制台 -->
-                    <section class="console-card">
-                        <div class="console-header">
-                            <div class="dot red"></div>
-                            <div class="dot yellow"></div>
-                            <div class="dot green"></div>
-                            <span>控制台日志</span>
-                            <button id="clear-console-btn" class="console-clear">清除</button>
+                    <!-- 右半：排版效果实时预览 -->
+                    <div class="preview-panel">
+                        <div class="preview-header">
+                            <h3><span class="icon">📱</span>微信端排版效果预览 (IFrame 隔离)</h3>
+                            <span class="preview-note">样式 100% 行内化效果</span>
                         </div>
-                        <div class="console-body" id="console-logs">
-                            <div class="log-line info">系统就绪。请选择 Markdown 文件后点击「编译并本地预览」或「一键同步草稿箱」。</div>
+                        <div class="preview-viewport">
+                            <iframe id="preview-frame" src="about:blank"></iframe>
+                            <div class="preview-placeholder" id="preview-placeholder">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <p>尚未进行编译。选择文件后，点击「编译并本地预览」可在此处看到渲染效果。</p>
+                            </div>
                         </div>
-                    </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 视图2：文章管理与排期库 -->
+            <div id="library-view" class="view-panel hidden">
+                <!-- 顶部工具栏：筛选过滤、统计胶囊、实时搜索与刷新 -->
+                <div class="library-toolbar">
+                    <div class="filter-pills">
+                        <button class="filter-pill active" data-filter="all" onclick="filterArticles('all')">
+                            全部 <span class="pill-count" id="count-all">0</span>
+                        </button>
+                        <button class="filter-pill pill-draft" data-filter="draft" onclick="filterArticles('draft')">
+                            待审核 <span class="pill-count" id="count-draft">0</span>
+                        </button>
+                        <button class="filter-pill pill-scheduled" data-filter="scheduled" onclick="filterArticles('scheduled')">
+                            已排期 <span class="pill-count" id="count-scheduled">0</span>
+                        </button>
+                        <button class="filter-pill pill-synced" data-filter="synced" onclick="filterArticles('synced')">
+                            已入库 <span class="pill-count" id="count-synced">0</span>
+                        </button>
+                    </div>
+
+                    <div class="toolbar-search-group">
+                        <div class="search-input-wrapper">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="article-search-input" placeholder="按标题、作者或标签快速筛选..." oninput="onArticleSearch(this.value)">
+                            <button id="clear-search-btn" class="clear-search-btn hidden" onclick="clearArticleSearch()">✕</button>
+                        </div>
+                        <button class="btn refresh-btn" onclick="loadArticlesCatalog()" title="刷新文章库">
+                            🔄 刷新
+                        </button>
+                    </div>
                 </div>
 
-                <!-- 右半：排版效果实时预览 -->
-                <div class="preview-panel">
-                    <div class="preview-header">
-                        <h3><span class="icon">📱</span>微信端排版效果预览 (IFrame 隔离)</h3>
-                        <span class="preview-note">样式 100% 行内化效果</span>
+                <!-- 提示信息卡片：Antigravity 协同赋能说明 -->
+                <div class="ai-inspiration-banner">
+                    <div class="ai-banner-icon">✨</div>
+                    <div class="ai-banner-content">
+                        <h4>Antigravity 本地私有化写作与排期池</h4>
+                        <p>由本地大模型（无需三方付费 API）根据选题规划深度创作。在此您可以自由<strong>查看排版预览</strong>、<strong>设定排期日期</strong>或<strong>一键同意入库</strong>直接推送到微信公众号草稿箱。</p>
                     </div>
-                    <div class="preview-viewport">
-                        <iframe id="preview-frame" src="about:blank"></iframe>
-                        <div class="preview-placeholder" id="preview-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <p>尚未进行编译。选择文件后，点击「编译并本地预览」可在此处看到渲染效果。</p>
-                        </div>
+                </div>
+
+                <!-- 文章卡片网格列表 -->
+                <div class="library-grid-container">
+                    <div id="articles-card-grid" class="articles-card-grid">
+                        <!-- JS 动态渲染卡片 -->
+                    </div>
+                    <!-- 空状态展示 -->
+                    <div id="library-empty" class="library-empty hidden">
+                        <div class="empty-icon">📂</div>
+                        <h3>暂无符合条件的文章</h3>
+                        <p>工作区 articles/drafts/ 目录下暂未找到文章或筛选结果为空。</p>
                     </div>
                 </div>
             </div>

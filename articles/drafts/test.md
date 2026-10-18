@@ -5,6 +5,9 @@ digest: "这是一篇用于全景测试样式行内化、外链转脚注及多�
 cover: "assets/cover.png"
 style: "tech"
 pygments_style: "monokai"
+status: "synced"
+sync_time: "2026-10-18 15:34"
+wechat_media_id: "mock_draft_test_id"
 enable_footnotes: true
 content_source_url: "https://github.com/achaobc/autogzh"
 ---

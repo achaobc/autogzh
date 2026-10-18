@@ -5,7 +5,12 @@ const state = {
     selectedMdPath: "",
     selectedCoverPath: "",
     activeFileTab: "workspace", // workspace | manual
-    activeCoverTab: "workspace"  // workspace | manual
+    activeCoverTab: "workspace",  // workspace | manual
+    activeView: "workspace", // workspace | library
+    articles: [],
+    currentFilter: "all",
+    searchKeyword: "",
+    stats: { total: 0, draft: 0, scheduled: 0, synced: 0 }
 };
 
 // 页面加载完毕后初始化
@@ -23,7 +28,10 @@ function initApp() {
     // 3. 加载工作区文件列表
     loadWorkspaceFiles();
     
-    // 4. 注册事件监听器
+    // 4. 加载文章管理与排期库
+    loadArticlesCatalog();
+    
+    // 5. 注册事件监听器
     setupEventListeners();
 }
 
@@ -556,3 +564,354 @@ async function parseJsonResponse(response) {
         throw new Error(`服务端异常 [HTTP ${response.status}]`);
     }
 }
+
+// --------------------------------------------------------------------------
+// 视图切换与文章管理与排期库
+// --------------------------------------------------------------------------
+
+// 视图切换
+window.switchMainView = function(viewName) {
+    state.activeView = viewName;
+    const wsBtn = document.getElementById("nav-btn-workspace");
+    const libBtn = document.getElementById("nav-btn-library");
+    const wsView = document.getElementById("workspace-view");
+    const libView = document.getElementById("library-view");
+
+    if (viewName === "workspace") {
+        wsBtn.classList.add("active");
+        libBtn.classList.remove("active");
+        wsView.classList.remove("hidden");
+        libView.classList.add("hidden");
+    } else {
+        wsBtn.classList.remove("active");
+        libBtn.classList.add("active");
+        wsView.classList.add("hidden");
+        libView.classList.remove("hidden");
+        loadArticlesCatalog();
+    }
+};
+
+// 加载文章库
+async function loadArticlesCatalog() {
+    try {
+        const response = await fetch("/api/articles");
+        if (!response.ok) throw new Error("获取文章库数据失败");
+        const data = await response.json();
+        
+        state.articles = data.articles || [];
+        state.stats = data.stats || { total: 0, draft: 0, scheduled: 0, synced: 0 };
+        
+        // 更新顶栏与药丸计数
+        const badge = document.getElementById("library-total-badge");
+        if (badge) badge.textContent = state.stats.total;
+        
+        const countAll = document.getElementById("count-all");
+        if (countAll) countAll.textContent = state.stats.total;
+        
+        const countDraft = document.getElementById("count-draft");
+        if (countDraft) countDraft.textContent = state.stats.draft;
+        
+        const countScheduled = document.getElementById("count-scheduled");
+        if (countScheduled) countScheduled.textContent = state.stats.scheduled;
+        
+        const countSynced = document.getElementById("count-synced");
+        if (countSynced) countSynced.textContent = state.stats.synced;
+        
+        renderArticlesGrid();
+    } catch (error) {
+        console.warn("加载文章库失败:", error);
+    }
+}
+
+// 筛选文章
+window.filterArticles = function(status) {
+    state.currentFilter = status;
+    
+    document.querySelectorAll(".filter-pill").forEach(pill => {
+        if (pill.getAttribute("data-filter") === status) {
+            pill.classList.add("active");
+        } else {
+            pill.classList.remove("active");
+        }
+    });
+    
+    renderArticlesGrid();
+};
+
+// 实时搜索文章
+window.onArticleSearch = function(keyword) {
+    state.searchKeyword = (keyword || "").trim().toLowerCase();
+    const clearBtn = document.getElementById("clear-search-btn");
+    if (clearBtn) {
+        if (state.searchKeyword) {
+            clearBtn.classList.remove("hidden");
+        } else {
+            clearBtn.classList.add("hidden");
+        }
+    }
+    renderArticlesGrid();
+};
+
+window.clearArticleSearch = function() {
+    const input = document.getElementById("article-search-input");
+    if (input) input.value = "";
+    onArticleSearch("");
+};
+
+// 设定发文排期
+window.setArticleSchedule = async function(path, dateVal) {
+    const newStatus = dateVal ? "scheduled" : "draft";
+    try {
+        appendLog(`正在为文章 '${path}' 更新排期至: ${dateVal || "无 (恢复待审核)"}...`, "info");
+        const res = await fetch("/api/articles/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                path: path,
+                scheduled_date: dateVal,
+                status: newStatus
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(dateVal ? `已设定排期: ${dateVal}` : "已清除排期", "success");
+            appendLog(`排期已更新: ${path} -> [${newStatus}] ${dateVal}`, "success");
+            await loadArticlesCatalog();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("排期更新失败: " + e.message, "error");
+        appendLog("更新排期失败: " + e.message, "error");
+    }
+};
+
+// 从卡片直连预览：跳回工作区并自动渲染
+window.previewFromCatalog = async function(path) {
+    switchMainView('workspace');
+    
+    const mdSelect = document.getElementById("md-file-select");
+    let foundInSelect = false;
+    for (let i = 0; i < mdSelect.options.length; i++) {
+        if (mdSelect.options[i].value === path) {
+            mdSelect.selectedIndex = i;
+            foundInSelect = true;
+            break;
+        }
+    }
+    
+    if (foundInSelect) {
+        switchFileTab('workspace');
+    } else {
+        document.getElementById("md-path-manual").value = path;
+        switchFileTab('manual');
+    }
+    
+    await checkMdFrontmatter(path);
+    await triggerPreview();
+};
+
+// 从卡片一键同步入库微信草稿箱
+window.syncSingleArticle = async function(path, btnEl) {
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = "⏳ 同步中...";
+    }
+    
+    appendLog(`开始从文章库一键同步 '${path}' 到微信公众平台草稿箱...`, "info");
+    
+    try {
+        const res = await fetch("/api/articles/sync-one", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: path })
+        });
+        const data = await res.json();
+        
+        if (res.status === 403 && data.error_type === "IP_WHITELIST") {
+            appendLog(`❌ 微信 API 报错: 40164 (IP 白名单错误)`, "error");
+            renderIpWhitelistWarning(data.ip);
+            showToast("同步失败：当前 IP 未加白", "error");
+        } else if (data.success) {
+            appendLog(`🎉 文章 '${data.title}' 成功同步入库草稿箱！`, "success");
+            appendLog(`👉 草稿 Media ID: ${data.media_id}`, "success");
+            appendLog(`👉 同步时间: ${data.sync_time}`, "info");
+            showToast(`《${data.title}》已入库微信草稿箱！`, "success");
+            await loadArticlesCatalog();
+        } else {
+            throw new Error(data.message || "同步失败");
+        }
+    } catch (e) {
+        showToast("入库失败: " + e.message, "error");
+        appendLog(`一键入库失败 [${path}]: ${e.message}`, "error");
+    } finally {
+        if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = "🚀 一键入库";
+        }
+    }
+};
+
+// 从工作区安全删除草稿
+window.deleteArticle = async function(path) {
+    if (!confirm(`确定要从本地工作区删除文章 '${path}' 吗？此操作无法撤销。`)) {
+        return;
+    }
+    
+    try {
+        const res = await fetch("/api/articles/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: path })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("文章已删除", "info");
+            appendLog(`已删除草稿文件: ${path}`, "info");
+            await loadArticlesCatalog();
+            await loadWorkspaceFiles();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("删除失败: " + e.message, "error");
+        appendLog(`删除失败: ${e.message}`, "error");
+    }
+};
+
+// 安全 HTML 转义
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// 渲染文章网格列表
+function renderArticlesGrid() {
+    const container = document.getElementById("articles-card-grid");
+    const emptyState = document.getElementById("library-empty");
+    if (!container) return;
+    
+    const filter = state.currentFilter;
+    const keyword = state.searchKeyword;
+    
+    const filtered = state.articles.filter(item => {
+        if (filter !== "all" && item.status !== filter) {
+            return false;
+        }
+        if (keyword) {
+            const titleMatch = (item.title || "").toLowerCase().includes(keyword);
+            const authorMatch = (item.author || "").toLowerCase().includes(keyword);
+            const digestMatch = (item.digest || "").toLowerCase().includes(keyword);
+            const tagsMatch = Array.isArray(item.tags) && item.tags.some(t => String(t).toLowerCase().includes(keyword));
+            if (!titleMatch && !authorMatch && !digestMatch && !tagsMatch) {
+                return false;
+            }
+        }
+        return true;
+    });
+    
+    if (filtered.length === 0) {
+        container.innerHTML = "";
+        if (emptyState) emptyState.classList.remove("hidden");
+        return;
+    }
+    
+    if (emptyState) emptyState.classList.add("hidden");
+    
+    const styleDisplayMap = {
+        "default": "优雅茶青",
+        "tech": "深邃科技蓝",
+        "story": "硬核实战橙",
+        "minimal": "极简冷灰",
+        "warm": "暖意秋橙"
+    };
+    
+    let html = "";
+    filtered.forEach(item => {
+        const isSynced = item.status === "synced";
+        const isScheduled = item.status === "scheduled";
+        
+        let statusBadgeClass = "draft";
+        let statusBadgeText = "⏳ 待审核";
+        if (isSynced) {
+            statusBadgeClass = "synced";
+            statusBadgeText = "✓ 已入库";
+        } else if (isScheduled) {
+            statusBadgeClass = "scheduled";
+            statusBadgeText = `📅 ${item.scheduled_date || "已排期"}`;
+        }
+        
+        const styleName = styleDisplayMap[item.style] || item.style || "默认主题";
+        const wordsFormatted = item.word_count ? `${item.word_count.toLocaleString()} 字` : "未计";
+        
+        let coverHtml = "";
+        if (item.cover_url) {
+            coverHtml = `<img src="${item.cover_url}" alt="cover" class="card-cover-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'card-cover-fallback\\\'>📰</div>'">`;
+        } else {
+            coverHtml = `<div class="card-cover-fallback">📰</div>`;
+        }
+        
+        let tagsHtml = "";
+        if (Array.isArray(item.tags) && item.tags.length > 0) {
+            tagsHtml = item.tags.map(t => `<span class="card-tag">#${escapeHtml(t)}</span>`).join("");
+        }
+        
+        let syncedInfoHtml = "";
+        if (isSynced) {
+            const shortMediaId = item.wechat_media_id ? (item.wechat_media_id.length > 20 ? item.wechat_media_id.substring(0, 20) + "..." : item.wechat_media_id) : "草稿已生成";
+            syncedInfoHtml = `
+                <div class="card-synced-info">
+                    <span>草稿ID: <code>${escapeHtml(shortMediaId)}</code></span>
+                    <span>${escapeHtml(item.sync_time || "已同步")}</span>
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="article-card" data-path="${escapeHtml(item.path)}">
+                <div class="card-cover-container">
+                    ${coverHtml}
+                    <div class="card-status-badge ${statusBadgeClass}">${statusBadgeText}</div>
+                </div>
+                <div class="card-content">
+                    <h4 class="card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</h4>
+                    <p class="card-digest" title="${escapeHtml(item.digest)}">${escapeHtml(item.digest || "暂无摘要")}</p>
+                    <div class="card-meta-row">
+                        <span>👤 ${escapeHtml(item.author || "默认作者")}</span>
+                        <span>·</span>
+                        <span>📝 约 ${wordsFormatted}</span>
+                        <span>·</span>
+                        <span class="card-tag style-tag">🎨 ${escapeHtml(styleName)}</span>
+                        ${tagsHtml}
+                    </div>
+                    ${syncedInfoHtml}
+                    <div class="card-actions">
+                        <div class="schedule-group">
+                            <label>排期:</label>
+                            <input type="date" value="${escapeHtml(item.scheduled_date || "")}" onchange="setArticleSchedule('${escapeHtml(item.path)}', this.value)">
+                        </div>
+                        <div class="card-btn-group">
+                            <button class="card-btn card-preview-btn" onclick="previewFromCatalog('${escapeHtml(item.path)}')" title="调入工作区实时编译预览">
+                                👁️ 预览
+                            </button>
+                            <button class="card-btn card-sync-btn" onclick="syncSingleArticle('${escapeHtml(item.path)}', this)" title="一键推送到微信公众号草稿箱">
+                                ${isSynced ? "🔄 重新入库" : "🚀 一键入库"}
+                            </button>
+                            <button class="card-btn card-delete-btn" onclick="deleteArticle('${escapeHtml(item.path)}')" title="删除草稿">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
