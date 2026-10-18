@@ -47,8 +47,11 @@ def main():
         with open(output_html_path, "w", encoding="utf-8") as f:
             f.write(final_html)
             
-        print(f"\n渲染成功！输出文件已保存至: {os.path.abspath(output_html_path)}")
-        print("请用浏览器打开该文件，检查排版效果和行内样式是否正确注入。")
+        abs_html = os.path.abspath(output_html_path)
+        print(f"\n渲染成功！输出文件已保存至: {abs_html}")
+        print("正在自动为您调用默认浏览器打开查看排版效果...")
+        import webbrowser
+        webbrowser.open(f"file:///{abs_html.replace(os.sep, '/')}")
         
     except Exception as e:
         print(f"渲染测试失败: {e}")

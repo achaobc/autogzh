@@ -1,0 +1,210 @@
+/* 微信公众号排版样式表 - 硬核实战橙主题 (Deep Review / 经验复盘风) */
+/* 参考自真实高转评技术复盘排版规范：醒目热橙强调色 + 金句卡片 + 模块化视觉层级 */
+
+.markdown-body {
+    font-family: -apple-system-font, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+    font-size: 16px;
+    color: #2d3748;
+    line-height: 1.85;
+    letter-spacing: 0.5px;
+    word-break: break-word;
+    text-align: justify;
+    box-sizing: border-box;
+    padding: 10px 4px;
+}
+
+/* 基础段落 */
+p {
+    margin: 1.2em 0;
+    color: #374151;
+    font-size: 16px;
+    line-height: 1.85;
+}
+
+/* 一级标题 (居中醒目，带经典橙色加粗下划线装饰) */
+h1 {
+    font-size: 1.45em;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 2em 0 1.2em 0;
+    line-height: 1.45;
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 3px solid #ffcc80;
+    letter-spacing: 0.8px;
+}
+
+/* 二级标题 (模块化卡片式横栏，热橙竖条与暖色浅底渐变) */
+h2 {
+    font-size: 1.22em;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 2em 0 1em 0;
+    padding: 8px 14px;
+    border-left: 5px solid #e65100;
+    background-color: #fff7ed;
+    border-radius: 0 6px 6px 0;
+    line-height: 1.45;
+}
+
+/* 三级标题 */
+h3 {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #c2410c;
+    margin: 1.6em 0 0.8em 0;
+    padding-left: 8px;
+    border-left: 3px solid #f97316;
+    line-height: 1.4;
+}
+
+/* 四级标题 */
+h4 {
+    font-size: 1em;
+    font-weight: 700;
+    color: #9a3412;
+    margin: 1.2em 0 0.6em 0;
+}
+
+/* 引导金句卡片 (仿 Jiaob.html 经典引言框：柔和浅橙背景 + 深红橙色高亮加粗文字) */
+blockquote {
+    margin: 1.6em 0;
+    padding: 16px 18px;
+    border-left: 4px solid #e65100;
+    background-color: #fffaf6;
+    border-radius: 0 8px 8px 0;
+    box-sizing: border-box;
+}
+
+blockquote p {
+    margin: 0.3em 0;
+    font-size: 15px;
+    color: #7c2d12;
+    font-weight: 600;
+    line-height: 1.75;
+}
+
+/* 列表 */
+ul, ol {
+    margin: 1.2em 0;
+    padding-left: 24px;
+}
+
+li {
+    margin: 0.5em 0;
+    color: #374151;
+    line-height: 1.8;
+}
+
+li p {
+    margin: 0.2em 0;
+}
+
+/* 行内代码 (醒目浅红底与深红字) */
+code {
+    font-family: Consolas, Monaco, Menlo, monospace;
+    font-size: 0.9em;
+    background-color: #fef2f2;
+    color: #dc2626;
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+    border: 1px solid #fee2e2;
+}
+
+/* 代码块 (深黑稳重大底，提升技术严肃感) */
+pre {
+    font-family: Consolas, Monaco, Menlo, "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    background-color: #1a202c;
+    color: #f7fafc;
+    padding: 16px;
+    margin: 1.6em 0;
+    overflow-x: auto;
+    border-radius: 8px;
+    line-height: 1.5;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+pre code {
+    font-family: inherit;
+    font-size: inherit;
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    word-break: normal;
+    white-space: pre;
+    border: none;
+}
+
+/* 正文插图 */
+img {
+    display: block;
+    max-width: 100%;
+    margin: 2em auto;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(230, 81, 0, 0.08);
+}
+
+/* 强调粗体 (采用高饱和度炽热橙) */
+strong {
+    color: #e65100;
+    font-weight: 700;
+}
+
+em {
+    font-style: italic;
+    color: #71717a;
+}
+
+/* 链接 (热橙色 + 金黄下划线) */
+a {
+    color: #e65100;
+    text-decoration: none;
+    border-bottom: 2px solid #ffcc80;
+}
+
+/* 分隔线 */
+hr {
+    border: none;
+    border-top: 1px dashed #fed7aa;
+    margin: 28px 0;
+}
+
+/* 表格 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.8em 0;
+    font-size: 0.9em;
+}
+
+th, td {
+    border: 1px solid #fed7aa;
+    padding: 10px 14px;
+}
+
+th {
+    background-color: #ffedd5;
+    font-weight: 700;
+    color: #9a3412;
+    text-align: left;
+}
+
+td {
+    color: #374151;
+}
+
+tr:nth-child(even) {
+    background-color: #fffaf6;
+}
+
+/* 文末脚注区 */
+.footnotes-box {
+    margin-top: 2.8em;
+    padding-top: 1.4em;
+    border-top: 1px dashed #fed7aa;
+    font-size: 0.85em;
+    color: #78350f;
+}

@@ -124,6 +124,7 @@ def api_get_themes():
     themes = [
         {"id": "default", "name": "优雅茶青 (Elegant Teal - 默认)"},
         {"id": "tech", "name": "深邃科技蓝 (Tech Blue)"},
+        {"id": "story", "name": "硬核实战橙 (Deep Review - 经验复盘风)"},
         {"id": "minimal", "name": "极简冷灰 (Minimalist Gray)"},
         {"id": "warm", "name": "暖意秋橙 (Warm Autumn)"}
     ]
