@@ -3,321 +3,396 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微信公众号 Markdown 自动排版与同步工具</title>
-    <!-- 引入高质感字体 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <!-- 引入样式表 -->
+    <title>AutoGZH - 微信公众号内容管理与排版同步中台</title>
+    <!-- 企业级 UI 样式表 (Ant Design / Element Plus 紧凑中台规范) -->
     <link rel="stylesheet" href="/ui/static/style.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- 侧边栏：系统设置与配置 -->
-        <aside class="sidebar">
-            <div class="brand">
-                <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div class="app-layout">
+        <!-- 侧边导航栏 (宽度 208px) -->
+        <aside class="ant-sider">
+            <div class="sider-header">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.05 21.95a.5.5 0 00.612.612L7.66 20.662A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" fill="currentColor"/>
                 </svg>
-                <h2>WeChat Sync</h2>
+                <span class="app-title">AutoGZH 内容中台</span>
             </div>
-            
-            <!-- 侧边栏主导航 -->
-            <nav class="sidebar-nav">
-                <button id="side-nav-library" class="side-nav-item active" onclick="switchMainView('library')">
-                    <span class="nav-icon">📚</span>
-                    <span class="nav-label">文章管理与排期库</span>
-                    <span id="side-library-badge" class="nav-badge">0</span>
-                </button>
-                <button id="side-nav-workspace" class="side-nav-item" onclick="switchMainView('workspace')">
-                    <span class="nav-icon">🚀</span>
-                    <span class="nav-label">极速创作与同步</span>
-                </button>
+
+            <nav class="sider-menu">
+                <div class="menu-section-title">内容与排期</div>
+                <div id="side-nav-library" class="menu-item active" onclick="switchMainView('library')">
+                    <span class="menu-icon">📚</span>
+                    <span class="menu-text">文章管理与排期</span>
+                    <span id="side-library-badge" class="menu-badge">0</span>
+                </div>
+                <div id="side-nav-workspace" class="menu-item" onclick="switchMainView('workspace')">
+                    <span class="menu-icon">🚀</span>
+                    <span class="menu-text">极速排版与创作</span>
+                </div>
+
+                <div class="menu-section-title">系统与接入</div>
+                <div id="side-nav-config" class="menu-item" onclick="openConfigModal()">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">公众号凭证配置</span>
+                </div>
             </nav>
-            
-            <section class="section-card config-section">
-                <h3><span class="icon">⚙️</span>微信公众号配置</h3>
-                <form id="config-form">
-                    <div class="form-group">
-                        <label for="appid">AppID</label>
-                        <input type="password" id="appid" placeholder="输入公众号 AppID" required autocomplete="off">
-                        <span class="toggle-password" onclick="togglePasswordVisibility('appid')">👁️</span>
-                    </div>
-                    <div class="form-group">
-                        <label for="secret">AppSecret</label>
-                        <input type="password" id="secret" placeholder="输入公众号 AppSecret" required autocomplete="off">
-                        <span class="toggle-password" onclick="togglePasswordVisibility('secret')">👁️</span>
-                    </div>
-                    <div class="form-group">
-                        <label for="author">默认作者</label>
-                        <input type="text" id="author" placeholder="作者名称">
-                    </div>
-                    <div class="form-row">
-                        <div class="switch-group">
-                            <label class="switch">
-                                <input type="checkbox" id="show_cover_pic" checked>
-                                <span class="slider"></span>
-                            </label>
-                            <span>正文显示封面</span>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="switch-group">
-                            <label class="switch">
-                                <input type="checkbox" id="need_open_comment">
-                                <span class="slider"></span>
-                            </label>
-                            <span>开启留言评论</span>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="switch-group">
-                            <label class="switch">
-                                <input type="checkbox" id="only_less_tags">
-                                <span class="slider"></span>
-                            </label>
-                            <span>只允许有权限的标记</span>
-                        </div>
-                    </div>
-                    <button type="submit" id="save-config-btn" class="btn secondary-btn">保存系统配置</button>
-                </form>
-            </section>
-            
-            <div class="sidebar-footer">
-                <p>WeChat Markdown Sync Tool v1.1</p>
-                <p>本地工作区: <code id="workspace-path">加载中...</code></p>
+
+            <div class="sider-footer">
+                <div>工作区: <strong>auto-gzh</strong></div>
+                <div class="version-tag">Release v1.2 Enterprise</div>
             </div>
         </aside>
 
-        <!-- 主内容区：工作台与控制台 -->
-        <main class="main-content">
-            <header class="top-header">
-                <div class="nav-tabs-wrapper">
-                    <button id="nav-btn-library" class="nav-tab-btn active" onclick="switchMainView('library')">
-                        <span class="icon">📚</span> 文章管理与排期库
-                        <span id="library-total-badge" class="nav-count-badge">0</span>
-                    </button>
-                    <button id="nav-btn-workspace" class="nav-tab-btn" onclick="switchMainView('workspace')">
-                        <span class="icon">🚀</span> 极速创作与同步
-                    </button>
+        <!-- 主内容区 -->
+        <main class="ant-main">
+            <!-- 顶部全局工具条 (48px) -->
+            <header class="ant-header">
+                <div class="breadcrumb-nav">
+                    <span>空间</span>
+                    <span class="separator">/</span>
+                    <span>公众号分发</span>
+                    <span class="separator">/</span>
+                    <span id="breadcrumb-current" class="current-page">文章管理与排期</span>
                 </div>
-                <div class="header-right">
-                    <div class="status-indicator">
-                        <span class="status-dot green"></span>
-                        <span>本地服务已连接</span>
+
+                <div class="header-right-tools">
+                    <div class="status-badge-inline">
+                        <span class="status-dot-sm"></span>
+                        <span>本地服务已就绪 (127.0.0.1)</span>
                     </div>
+                    <button class="header-btn" onclick="openConfigModal()">
+                        <span>⚙️</span> 接口凭证
+                    </button>
                 </div>
             </header>
 
-            <!-- 视图1：工作区极速排版与同步 -->
-            <div id="workspace-view" class="view-panel hidden">
-                <div class="workspace-grid">
-                    <!-- 左半：输入与操作 -->
-                    <div class="editor-panel">
-                        <section class="section-card file-selector-card">
-                            <h3><span class="icon">📄</span>选择 Markdown 文件</h3>
-                            <div class="tab-header">
-                                <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区下拉选择</button>
-                                <button class="tab-btn" onclick="switchFileTab('manual')">选择电脑本地文件 / 绝对路径</button>
+            <div class="page-container">
+                <!-- ========================================================
+                     视图 1: 文章管理与排期库 (企业级高密度表格主视图)
+                     ======================================================== -->
+                <section id="library-view" class="view-section">
+                    <!-- 1. 微型指标条 (Mini Metric Bar - 高度严格 48px) -->
+                    <div class="mini-metric-bar">
+                        <div class="metric-item">
+                            <span class="metric-icon">📄</span>
+                            <div class="metric-text-group">
+                                <span class="metric-title">总文章数:</span>
+                                <span id="count-all" class="metric-count">0</span>
                             </div>
-                            
-                            <div class="tab-content" id="workspace-tab">
-                                <div class="input-with-btn">
-                                    <div class="select-wrapper" style="flex: 1;">
-                                        <select id="md-file-select" class="custom-select">
+                        </div>
+                        <div class="metric-item metric-draft">
+                            <span class="metric-icon">⏳</span>
+                            <div class="metric-text-group">
+                                <span class="metric-title">待审核草稿:</span>
+                                <span id="count-draft" class="metric-count">0</span>
+                            </div>
+                        </div>
+                        <div class="metric-item metric-scheduled">
+                            <span class="metric-icon">📅</span>
+                            <div class="metric-text-group">
+                                <span class="metric-title">已设定排期:</span>
+                                <span id="count-scheduled" class="metric-count">0</span>
+                            </div>
+                        </div>
+                        <div class="metric-item metric-synced">
+                            <span class="metric-icon">✓</span>
+                            <div class="metric-text-group">
+                                <span class="metric-title">已入库草稿箱:</span>
+                                <span id="count-synced" class="metric-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 多维内联筛选工具栏 (Inline Filter Bar) -->
+                    <div class="inline-filter-bar">
+                        <div class="filter-left-form">
+                            <div class="filter-item">
+                                <span class="filter-label">关键字:</span>
+                                <input type="text" id="filter-search" class="ant-input filter-search-input" placeholder="输入标题 / 作者 / 标签检索..." onkeydown="if(event.key==='Enter')handleFilterSearch()">
+                            </div>
+                            <div class="filter-item">
+                                <span class="filter-label">状态:</span>
+                                <select id="filter-status" class="ant-select filter-select" onchange="handleFilterSearch()">
+                                    <option value="all">全部状态</option>
+                                    <option value="draft">待审核 (Draft)</option>
+                                    <option value="scheduled">已排期 (Scheduled)</option>
+                                    <option value="synced">已入库 (Synced)</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <span class="filter-label">排版主题:</span>
+                                <select id="filter-style" class="ant-select filter-select" onchange="handleFilterSearch()">
+                                    <option value="all">全部风格</option>
+                                    <option value="story">硬核实战橙</option>
+                                    <option value="tech">深邃科技蓝</option>
+                                    <option value="default">优雅茶青</option>
+                                    <option value="minimal">极简冷灰</option>
+                                    <option value="warm">暖意秋橙</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="filter-btn-group">
+                            <button class="ant-btn ant-btn-primary" onclick="handleFilterSearch()">
+                                <span>🔍</span> 查询
+                            </button>
+                            <button class="ant-btn" onclick="handleFilterReset()">
+                                <span>🔄</span> 重置
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. 数据表格核心区 (Ant Data Table) -->
+                    <div class="table-card-wrapper">
+                        <!-- 表格操作条 -->
+                        <div class="table-toolbar">
+                            <div class="toolbar-batch-actions">
+                                <span class="batch-selection-info">已选 <strong id="selected-count">0</strong> 项</span>
+                                <button id="btn-batch-sync" class="ant-btn ant-btn-primary" onclick="handleBatchSync()" disabled>
+                                    🚀 批量入库微信
+                                </button>
+                                <button id="btn-batch-schedule" class="ant-btn" onclick="handleBatchSchedulePrompt()" disabled>
+                                    📅 批量设定排期
+                                </button>
+                                <button id="btn-batch-delete" class="ant-btn ant-btn-danger" onclick="handleBatchDelete()" disabled>
+                                    🗑️ 批量删除
+                                </button>
+                            </div>
+
+                            <div class="toolbar-view-tools">
+                                <button class="tool-icon-btn" onclick="loadArticlesCatalog()" title="刷新表格数据">
+                                    🔄
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 表格滚动实体 -->
+                        <div class="table-scroll-container">
+                            <table class="ant-table" id="articles-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-selection">
+                                            <input type="checkbox" id="select-all-checkbox" class="ant-checkbox" onchange="handleSelectAllChange(this.checked)">
+                                        </th>
+                                        <th class="col-cover">封面</th>
+                                        <th class="col-title-main">文章标题与摘要</th>
+                                        <th>排版风格</th>
+                                        <th style="text-align: right;">字数</th>
+                                        <th>发文排期</th>
+                                        <th>流转状态</th>
+                                        <th class="col-actions">业务操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="articles-table-body">
+                                    <!-- JS 渲染高密度行 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 4. 底部固定分页器 (Pagination) -->
+                        <div class="table-pagination-bar">
+                            <div>
+                                共 <strong id="pagination-total" style="color: var(--text-primary);">0</strong> 条记录
+                            </div>
+                            <div class="pagination-controls">
+                                <select id="pagination-pagesize" class="page-size-select" onchange="changePageSize(this.value)">
+                                    <option value="10">10 条/页</option>
+                                    <option value="20">20 条/页</option>
+                                    <option value="50">50 条/页</option>
+                                </select>
+                                <button class="page-btn" id="page-prev-btn" onclick="changePage(-1)">‹</button>
+                                <span id="page-number-display">第 1 / 1 页</span>
+                                <button class="page-btn" id="page-next-btn" onclick="changePage(1)">›</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================
+                     视图 2: 极速排版与创作工作台 (单篇调试视图)
+                     ======================================================== -->
+                <section id="workspace-view" class="view-section hidden">
+                    <div class="workspace-container">
+                        <!-- 左侧：编译要素配置面板 (380px) -->
+                        <div class="workspace-left-card">
+                            <div class="card-compact-header">
+                                <span>📄 编译要素与排版发布控制</span>
+                                <span class="ant-tag ant-tag-primary">单篇模式</span>
+                            </div>
+
+                            <div class="workspace-form-scroll">
+                                <div class="form-item-compact">
+                                    <label>Markdown 源文件路径</label>
+                                    <div class="tab-selector-bar">
+                                        <button class="tab-selector-btn active" onclick="switchFileTab('workspace')">工作区下拉</button>
+                                        <button class="tab-selector-btn" onclick="switchFileTab('manual')">绝对路径/选择</button>
+                                    </div>
+                                    <div id="workspace-tab">
+                                        <select id="md-file-select" class="ant-select" style="width: 100%;">
                                             <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
                                         </select>
                                     </div>
-                                    <button class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
+                                    <div id="manual-tab" class="hidden" style="display: flex; gap: 6px;">
+                                        <input type="text" id="md-path-manual" class="ant-input" placeholder="输入文件绝对路径 (如 E:/Docs/post.md)">
+                                        <button class="ant-btn" type="button" onclick="browseFile('md')">浏览...</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="tab-content hidden" id="manual-tab">
-                                <div class="input-with-btn">
-                                    <input type="text" id="md-path-manual" class="full-width-input" placeholder="请选择或直接输入 Markdown 文件绝对路径 (如 C:/Docs/my_article.md)">
-                                    <button id="browse-md-btn" class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
-                                </div>
-                            </div>
-                            <div id="frontmatter-banner" class="frontmatter-banner hidden">
-                                <span>✨</span>
-                                <span id="frontmatter-msg">已从 Markdown Frontmatter 自动识别标题/封面/主题元数据</span>
-                            </div>
-                        </section>
 
-                        <section class="section-card file-selector-card">
-                            <h3><span class="icon">🖼️</span>选择封面图片</h3>
-                            <div class="tab-header">
-                                <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区下拉选择</button>
-                                <button class="tab-btn" onclick="switchCoverTab('manual')">选择电脑本地文件 / 绝对路径</button>
-                            </div>
-                            
-                            <div class="tab-content" id="cover-workspace-tab">
-                                <div class="input-with-btn">
-                                    <div class="select-wrapper" style="flex: 1;">
-                                        <select id="cover-file-select" class="custom-select">
-                                            <option value="">-- 请选择工作区内的封面图片 --</option>
+                                <div class="form-item-compact">
+                                    <label>封面图片</label>
+                                    <div class="tab-selector-bar">
+                                        <button class="tab-selector-btn active" onclick="switchCoverTab('workspace')">工作区下拉</button>
+                                        <button class="tab-selector-btn" onclick="switchCoverTab('manual')">自定义路径</button>
+                                    </div>
+                                    <div id="cover-workspace-tab">
+                                        <select id="cover-file-select" class="ant-select" style="width: 100%;">
+                                            <option value="">-- 请选择封面图片 --</option>
                                         </select>
                                     </div>
-                                    <button class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
+                                    <div id="cover-manual-tab" class="hidden" style="display: flex; gap: 6px;">
+                                        <input type="text" id="cover-path-manual" class="ant-input" placeholder="输入封面图绝对路径">
+                                        <button class="ant-btn" type="button" onclick="browseFile('image')">浏览...</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="tab-content hidden" id="cover-manual-tab">
-                                <div class="input-with-btn">
-                                    <input type="text" id="cover-path-manual" class="full-width-input" placeholder="请选择或直接输入封面图片绝对路径 (如 C:/Pictures/cover.png)">
-                                    <button id="browse-cover-btn" class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
-                                </div>
-                            </div>
-                        </section>
 
-                        <section class="section-card meta-card">
-                            <h3><span class="icon">✍️</span>排版与发布要素</h3>
-                            <div class="form-group">
-                                <label for="theme-style">排版设计风格主题</label>
-                                <div class="select-wrapper">
-                                    <select id="theme-style" class="custom-select">
-                                        <option value="default">优雅茶青 (Elegant Teal - 默认)</option>
-                                        <option value="tech">深邃科技蓝 (Tech Blue)</option>
+                                <div class="form-item-compact">
+                                    <label for="theme-style">排版主题</label>
+                                    <select id="theme-style" class="ant-select">
                                         <option value="story">硬核实战橙 (Deep Review - 经验复盘风)</option>
+                                        <option value="tech">深邃科技蓝 (Tech Blue)</option>
+                                        <option value="default">优雅茶青 (Elegant Teal - 默认)</option>
                                         <option value="minimal">极简冷灰 (Minimalist Gray)</option>
                                         <option value="warm">暖意秋橙 (Warm Autumn)</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 16px;">
-                                <div>
-                                    <label for="enable-footnotes" style="margin-bottom: 2px; font-weight: 600; cursor: pointer;">外链自动转文末脚注</label>
-                                    <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">将正文外部超链接转换为文末参考链接 (符合微信规范)</span>
+
+                                <div class="switch-inline-row">
+                                    <span style="font-size: 12px; color: var(--text-regular);">外链自动转文末脚注</span>
+                                    <input type="checkbox" id="enable-footnotes" class="ant-checkbox" checked>
                                 </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="enable-footnotes" checked>
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label for="article-title">自定义标题</label>
-                                <input type="text" id="article-title" placeholder="默认提取 Markdown 内的第一个 H1 一级标题">
-                            </div>
-                            <div class="form-group">
-                                <label for="article-digest">自定义摘要</label>
-                                <textarea id="article-digest" placeholder="默认抓取正文前 120 字节（约 40 个汉字）作为摘要，超长自动安全截断"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label for="content-source-url">原文链接 (阅读原文)</label>
-                                <input type="url" id="content-source-url" placeholder="https://example.com/my-post">
-                            </div>
-                            <div class="form-group">
-                                <label for="pygments-style">代码高亮配色主题</label>
-                                <div class="select-wrapper">
-                                    <select id="pygments-style" class="custom-select">
-                                        <option value="monokai">Monokai (推荐 暗色)</option>
+
+                                <div class="form-item-compact">
+                                    <label for="article-title">自定义标题 (缺省自动提取首个 H1)</label>
+                                    <input type="text" id="article-title" class="ant-input" placeholder="自动提取">
+                                </div>
+
+                                <div class="form-item-compact">
+                                    <label for="article-digest">自定义摘要 (限额 120 字节自动截断)</label>
+                                    <textarea id="article-digest" class="ant-input" placeholder="默认抓取正文前 120 字节作为图文摘要"></textarea>
+                                </div>
+
+                                <div class="form-item-compact">
+                                    <label for="content-source-url">原文阅读链接 (URL)</label>
+                                    <input type="url" id="content-source-url" class="ant-input" placeholder="https://example.com/post">
+                                </div>
+
+                                <div class="form-item-compact">
+                                    <label for="pygments-style">代码高亮主题</label>
+                                    <select id="pygments-style" class="ant-select">
+                                        <option value="monokai">Monokai (暗色实战推荐)</option>
                                         <option value="dracula">Dracula (暗色)</option>
                                         <option value="github">Github (亮色)</option>
                                         <option value="default">Default</option>
                                         <option value="autumn">Autumn</option>
                                     </select>
                                 </div>
-                            </div>
-                        </section>
 
-                        <div class="action-buttons">
-                            <button id="preview-btn" class="btn primary-outline-btn">👁️ 编译并本地预览</button>
-                            <button id="sync-btn" class="btn primary-btn">🚀 一键同步草稿箱</button>
-                        </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+                                    <button id="preview-btn" class="ant-btn" onclick="triggerPreview()">
+                                        👁️ 编译排版并预览
+                                    </button>
+                                    <button id="sync-btn" class="ant-btn ant-btn-primary" onclick="triggerSync()">
+                                        🚀 一键同步草稿箱
+                                    </button>
+                                </div>
 
-                        <!-- 动态终端控制台 -->
-                        <section class="console-card">
-                            <div class="console-header">
-                                <div class="dot red"></div>
-                                <div class="dot yellow"></div>
-                                <div class="dot green"></div>
-                                <span>控制台日志</span>
-                                <button id="clear-console-btn" class="console-clear">清除</button>
-                            </div>
-                            <div class="console-body" id="console-logs">
-                                <div class="log-line info">系统就绪。请选择 Markdown 文件后点击「编译并本地预览」或「一键同步草稿箱」。</div>
-                            </div>
-                        </section>
-                    </div>
-
-                    <!-- 右半：排版效果实时预览 -->
-                    <div class="preview-panel">
-                        <div class="preview-header">
-                            <h3><span class="icon">📱</span>微信端排版效果预览 (IFrame 隔离)</h3>
-                            <span class="preview-note">样式 100% 行内化效果</span>
-                        </div>
-                        <div class="preview-viewport">
-                            <iframe id="preview-frame" src="about:blank"></iframe>
-                            <div class="preview-placeholder" id="preview-placeholder">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                <p>尚未进行编译。选择文件后，点击「编译并本地预览」可在此处看到渲染效果。</p>
+                                <!-- 紧凑控制台日志 -->
+                                <div class="compact-console-card">
+                                    <div class="console-mini-bar">
+                                        <span>终端运行输出</span>
+                                        <button class="ant-link" style="color: #999999;" onclick="clearConsole()">清空</button>
+                                    </div>
+                                    <div class="console-mini-body" id="console-logs">
+                                        <div class="log-line info">系统引擎就绪。</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 视图2：文章管理与排期库 -->
-            <div id="library-view" class="view-panel">
-                <!-- 顶部工具栏：筛选过滤、统计胶囊、实时搜索与刷新 -->
-                <div class="library-toolbar">
-                    <div class="filter-pills">
-                        <button class="filter-pill active" data-filter="all" onclick="filterArticles('all')">
-                            全部 <span class="pill-count" id="count-all">0</span>
-                        </button>
-                        <button class="filter-pill pill-draft" data-filter="draft" onclick="filterArticles('draft')">
-                            待审核 <span class="pill-count" id="count-draft">0</span>
-                        </button>
-                        <button class="filter-pill pill-scheduled" data-filter="scheduled" onclick="filterArticles('scheduled')">
-                            已排期 <span class="pill-count" id="count-scheduled">0</span>
-                        </button>
-                        <button class="filter-pill pill-synced" data-filter="synced" onclick="filterArticles('synced')">
-                            已入库 <span class="pill-count" id="count-synced">0</span>
-                        </button>
-                    </div>
-
-                    <div class="toolbar-search-group">
-                        <div class="search-input-wrapper">
-                            <span class="search-icon">🔍</span>
-                            <input type="text" id="article-search-input" placeholder="按标题、作者或标签快速筛选..." oninput="onArticleSearch(this.value)">
-                            <button id="clear-search-btn" class="clear-search-btn hidden" onclick="clearArticleSearch()">✕</button>
+                        <!-- 右侧：微信排版渲染视口 -->
+                        <div class="workspace-right-card">
+                            <div class="card-compact-header">
+                                <span>📱 微信端排版效果仿真视口 (IFrame 渲染隔离)</span>
+                                <span class="ant-tag">CSS 100% 行内化</span>
+                            </div>
+                            <div class="preview-viewport-box">
+                                <div class="phone-simulator-frame">
+                                    <iframe id="preview-frame" src="about:blank"></iframe>
+                                </div>
+                                <div id="preview-placeholder" class="preview-empty-state">
+                                    <p>暂无编译排版内容</p>
+                                    <p style="font-size: 11px; color: var(--text-disabled); margin-top: 4px;">请在左侧选择 Markdown 文件后点击「编译排版并预览」</p>
+                                </div>
+                            </div>
                         </div>
-                        <button class="btn refresh-btn" onclick="loadArticlesCatalog()" title="刷新文章库">
-                            🔄 刷新
-                        </button>
                     </div>
-                </div>
-
-                <!-- 提示信息卡片：Antigravity 协同赋能说明 -->
-                <div class="ai-inspiration-banner">
-                    <div class="ai-banner-icon">✨</div>
-                    <div class="ai-banner-content">
-                        <h4>Antigravity 本地私有化写作与排期池</h4>
-                        <p>由本地大模型（无需三方付费 API）根据选题规划深度创作。在此您可以自由<strong>查看排版预览</strong>、<strong>设定排期日期</strong>或<strong>一键同意入库</strong>直接推送到微信公众号草稿箱。</p>
-                    </div>
-                </div>
-
-                <!-- 文章卡片网格列表 -->
-                <div class="library-grid-container">
-                    <div id="articles-card-grid" class="articles-card-grid">
-                        <!-- JS 动态渲染卡片 -->
-                    </div>
-                    <!-- 空状态展示 -->
-                    <div id="library-empty" class="library-empty hidden">
-                        <div class="empty-icon">📂</div>
-                        <h3>暂无符合条件的文章</h3>
-                        <p>工作区 articles/drafts/ 目录下暂未找到文章或筛选结果为空。</p>
-                    </div>
-                </div>
+                </section>
             </div>
         </main>
     </div>
 
-    <!-- 提示框弹窗组件 -->
-    <div id="toast" class="toast hidden"></div>
+    <!-- ========================================================
+         微信公众号开发者凭证模态框 (Ant Modal)
+         ======================================================== -->
+    <div id="config-modal" class="ant-modal-mask hidden">
+        <div class="ant-modal">
+            <div class="ant-modal-header">
+                <span>⚙️ 微信公众号开发者凭证配置</span>
+                <button class="modal-close-btn" onclick="closeConfigModal()">✕</button>
+            </div>
+            <div class="ant-modal-body">
+                <form id="config-form" onsubmit="saveConfig(event)">
+                    <div class="form-item-compact">
+                        <label for="appid">公众号开发者 AppID</label>
+                        <input type="password" id="appid" class="ant-input" placeholder="输入公众号 AppID" required autocomplete="off">
+                    </div>
+                    <div class="form-item-compact">
+                        <label for="secret">公众号开发者 AppSecret</label>
+                        <input type="password" id="secret" class="ant-input" placeholder="输入公众号 AppSecret" required autocomplete="off">
+                    </div>
+                    <div class="form-item-compact">
+                        <label for="author">默认署名作者</label>
+                        <input type="text" id="author" class="ant-input" placeholder="如：阿超">
+                    </div>
+                    <div class="switch-inline-row" style="margin-top: 4px;">
+                        <span style="font-size: 12px;">正文显示封面</span>
+                        <input type="checkbox" id="show_cover_pic" class="ant-checkbox" checked>
+                    </div>
+                    <div class="switch-inline-row">
+                        <span style="font-size: 12px;">开启留言评论</span>
+                        <input type="checkbox" id="need_open_comment" class="ant-checkbox">
+                    </div>
+                    <div class="switch-inline-row">
+                        <span style="font-size: 12px;">只允许有权限的标记</span>
+                        <input type="checkbox" id="only_less_tags" class="ant-checkbox">
+                    </div>
+                    <input type="submit" id="hidden-config-submit" style="display: none;">
+                </form>
+            </div>
+            <div class="ant-modal-footer">
+                <button class="ant-btn" onclick="closeConfigModal()">取消</button>
+                <button class="ant-btn ant-btn-primary" id="save-config-btn" onclick="document.getElementById('hidden-config-submit').click()">保存配置</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- 引入交互逻辑 -->
+    <!-- 顶置轻量反馈 (Ant Message) -->
+    <div id="toast" class="ant-message hidden">
+        <span id="toast-icon">ℹ️</span>
+        <span id="toast-msg">操作成功</span>
+    </div>
+
+    <!-- 引入前端交互脚本 -->
     <script src="/ui/static/app.js"></script>
 </body>
 </html>

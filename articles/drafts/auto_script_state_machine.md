@@ -1,14 +1,14 @@
 ---
-title: "为什么你用 AI 写的自动化脚本跑半小时就崩？聊聊最值钱的容错与状态机"
-author: "阿超"
-digest: "AI 能秒写语法，但写不出工程韧性。十年老程序员聊聊自动化脚本真正值钱的容错设计与状态机重构。"
-cover: "assets/cover.png"
-style: "story"
-pygments_style: "monokai"
-status: "scheduled"
-scheduled_date: "2026-10-19"
+title: 为什么你用 AI 写的自动化脚本跑半小时就崩？聊聊最值钱的容错与状态机
+author: 阿超
+digest: AI 能秒写语法，但写不出工程韧性。十年老程序员聊聊自动化脚本真正值钱的容错设计与状态机重构。
+cover: assets/cover.png
+style: story
+pygments_style: monokai
+status: scheduled
+scheduled_date: '2026-10-19'
 enable_footnotes: true
-content_source_url: "https://github.com/achaobc/autogzh"
+content_source_url: https://github.com/achaobc/autogzh
 ---
 
 # 为什么你用 AI 写的自动化脚本跑半小时就崩？聊聊最值钱的容错与状态机

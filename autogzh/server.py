@@ -217,6 +217,76 @@ def api_update_article():
     else:
         return jsonify({"success": False, "message": msg}), 500
 
+def sync_article_to_wechat(abs_path):
+    """同步单篇 Markdown 文章至微信草稿箱底层函数"""
+    if not os.path.exists(abs_path):
+        return False, "文章文件不存在", {}
+        
+    frontmatter, _ = extract_frontmatter_from_file(abs_path)
+    config = get_config()
+    wechat_conf = config.get("wechat", {})
+    defaults_conf = config.get("draft_defaults", {})
+    
+    appid = wechat_conf.get("appid")
+    secret = wechat_conf.get("secret")
+    
+    if not appid or not secret or appid == "YOUR_APPID" or secret == "YOUR_APPSECRET":
+        return False, "未配置有效的公众号 AppID 或 AppSecret，请先在系统设置中填写", {}
+        
+    client = WeChatClient(appid=appid, secret=secret)
+    title = frontmatter.get("title") or extract_title_from_md(abs_path)
+    author = frontmatter.get("author") or defaults_conf.get("author", "默认作者")
+    style = frontmatter.get("style", "default")
+    pygments_style = frontmatter.get("pygments_style", "monokai")
+    enable_footnotes = frontmatter.get("enable_footnotes", True)
+    content_source_url = frontmatter.get("content_source_url", "")
+    
+    cover_path_val = frontmatter.get("cover") or "assets/cover.png"
+    abs_cover_path = os.path.abspath(cover_path_val if os.path.isabs(cover_path_val) else os.path.join(WORKSPACE_DIR, cover_path_val))
+    if not os.path.exists(abs_cover_path):
+        return False, f"未找到封面图文件: {cover_path_val}", {}
+        
+    cover_media_id = client.upload_cover_image(abs_cover_path)
+    
+    renderer = MarkdownRenderer(
+        css_path=style,
+        pygments_style=pygments_style,
+        enable_footnotes=enable_footnotes
+    )
+    html_content = renderer.render(abs_path, client)
+    
+    digest = frontmatter.get("digest") or defaults_conf.get("digest") or extract_digest_from_html(html_content)
+    if digest:
+        encoded_digest = digest.encode('utf-8')
+        if len(encoded_digest) > 120:
+            digest = encoded_digest[:117].decode('utf-8', errors='ignore') + "..."
+            
+    draft_media_id = client.create_draft(
+        title=title,
+        content=html_content,
+        thumb_media_id=cover_media_id,
+        author=author,
+        digest=digest,
+        content_source_url=content_source_url,
+        need_open_comment=int(defaults_conf.get("need_open_comment", 0)),
+        only_less_tags=int(defaults_conf.get("only_less_tags", 0))
+    )
+    
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    update_article_frontmatter(abs_path, {
+        "status": "synced",
+        "wechat_media_id": draft_media_id,
+        "sync_time": now_str
+    })
+    
+    return True, "同步成功", {
+        "media_id": draft_media_id,
+        "title": title,
+        "author": author,
+        "digest": digest,
+        "sync_time": now_str
+    }
+
 @app.route("/api/articles/sync-one", methods=["POST"])
 def api_sync_single_article():
     """从文章库直接一键同步指定文章到微信公众号草稿箱"""
@@ -226,77 +296,12 @@ def api_sync_single_article():
         return jsonify({"success": False, "message": "缺少文件路径"}), 400
         
     abs_path = os.path.abspath(rel_or_abs_path if os.path.isabs(rel_or_abs_path) else os.path.join(WORKSPACE_DIR, rel_or_abs_path))
-    if not os.path.exists(abs_path):
-        return jsonify({"success": False, "message": "文章文件不存在"}), 404
-        
-    frontmatter, _ = extract_frontmatter_from_file(abs_path)
-    
-    config = get_config()
-    wechat_conf = config.get("wechat", {})
-    defaults_conf = config.get("draft_defaults", {})
-    
-    appid = wechat_conf.get("appid")
-    secret = wechat_conf.get("secret")
-    
-    if not appid or not secret or appid == "YOUR_APPID" or secret == "YOUR_APPSECRET":
-        return jsonify({"success": False, "message": "未配置有效的公众号 AppID 或 AppSecret，请先在配置面板中填写"}), 400
-        
     try:
-        client = WeChatClient(appid=appid, secret=secret)
-        
-        title = frontmatter.get("title") or extract_title_from_md(abs_path)
-        author = frontmatter.get("author") or defaults_conf.get("author", "默认作者")
-        style = frontmatter.get("style", "default")
-        pygments_style = frontmatter.get("pygments_style", "monokai")
-        enable_footnotes = frontmatter.get("enable_footnotes", True)
-        content_source_url = frontmatter.get("content_source_url", "")
-        
-        cover_path_val = frontmatter.get("cover") or "assets/cover.png"
-        abs_cover_path = os.path.abspath(cover_path_val if os.path.isabs(cover_path_val) else os.path.join(WORKSPACE_DIR, cover_path_val))
-        if not os.path.exists(abs_cover_path):
-            return jsonify({"success": False, "message": f"未找到封面图: {cover_path_val}"}), 404
-            
-        cover_media_id = client.upload_cover_image(abs_cover_path)
-        
-        renderer = MarkdownRenderer(
-            css_path=style,
-            pygments_style=pygments_style,
-            enable_footnotes=enable_footnotes
-        )
-        html_content = renderer.render(abs_path, client)
-        
-        digest = frontmatter.get("digest") or defaults_conf.get("digest") or extract_digest_from_html(html_content)
-        if digest:
-            encoded_digest = digest.encode('utf-8')
-            if len(encoded_digest) > 120:
-                digest = encoded_digest[:117].decode('utf-8', errors='ignore') + "..."
-                
-        draft_media_id = client.create_draft(
-            title=title,
-            content=html_content,
-            thumb_media_id=cover_media_id,
-            author=author,
-            digest=digest,
-            content_source_url=content_source_url,
-            need_open_comment=int(defaults_conf.get("need_open_comment", 0)),
-            only_less_tags=int(defaults_conf.get("only_less_tags", 0))
-        )
-        
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-        update_article_frontmatter(abs_path, {
-            "status": "synced",
-            "wechat_media_id": draft_media_id,
-            "sync_time": now_str
-        })
-        
-        return jsonify({
-            "success": True,
-            "media_id": draft_media_id,
-            "title": title,
-            "author": author,
-            "digest": digest,
-            "sync_time": now_str
-        })
+        ok, msg, res_data = sync_article_to_wechat(abs_path)
+        if ok:
+            return jsonify({"success": True, **res_data})
+        else:
+            return jsonify({"success": False, "message": msg}), 400
     except WeChatIPWhitelistError as e:
         return jsonify({
             "success": False,
@@ -315,6 +320,84 @@ def api_sync_single_article():
             "success": False,
             "message": f"同步失败: {str(e)}"
         }), 500
+
+@app.route("/api/articles/batch-sync", methods=["POST"])
+def api_batch_sync_articles():
+    """批量同步文章到微信草稿箱"""
+    data = request.json or {}
+    paths = data.get("paths", [])
+    if not paths or not isinstance(paths, list):
+        return jsonify({"success": False, "message": "请选择要批量同步的文章"}), 400
+        
+    results = []
+    success_count = 0
+    fail_count = 0
+    
+    for p in paths:
+        abs_path = os.path.abspath(p if os.path.isabs(p) else os.path.join(WORKSPACE_DIR, p))
+        try:
+            ok, msg, res_data = sync_article_to_wechat(abs_path)
+            if ok:
+                success_count += 1
+                results.append({"path": p, "success": True, "title": res_data.get("title", ""), "media_id": res_data.get("media_id", "")})
+            else:
+                fail_count += 1
+                results.append({"path": p, "success": False, "message": msg})
+        except Exception as e:
+            fail_count += 1
+            results.append({"path": p, "success": False, "message": str(e)})
+            
+    return jsonify({
+        "success": True,
+        "success_count": success_count,
+        "fail_count": fail_count,
+        "results": results,
+        "message": f"批量同步完成: 成功 {success_count} 篇，失败 {fail_count} 篇"
+    })
+
+@app.route("/api/articles/batch-schedule", methods=["POST"])
+def api_batch_schedule_articles():
+    """批量设定排期日期"""
+    data = request.json or {}
+    paths = data.get("paths", [])
+    scheduled_date = data.get("scheduled_date", "").strip()
+    if not paths or not isinstance(paths, list):
+        return jsonify({"success": False, "message": "请选择要排期的文章"}), 400
+        
+    status = "scheduled" if scheduled_date else "draft"
+    updated_count = 0
+    for p in paths:
+        abs_path = os.path.abspath(p if os.path.isabs(p) else os.path.join(WORKSPACE_DIR, p))
+        if os.path.exists(abs_path):
+            ok, _ = update_article_frontmatter(abs_path, {
+                "scheduled_date": scheduled_date,
+                "status": status
+            })
+            if ok:
+                updated_count += 1
+                
+    return jsonify({"success": True, "updated_count": updated_count, "message": f"已成功更新 {updated_count} 篇文章的发文排期"})
+
+@app.route("/api/articles/batch-delete", methods=["POST"])
+def api_batch_delete_articles():
+    """批量安全删除草稿文章"""
+    data = request.json or {}
+    paths = data.get("paths", [])
+    if not paths or not isinstance(paths, list):
+        return jsonify({"success": False, "message": "请选择要删除的文章"}), 400
+        
+    articles_dir = os.path.abspath(os.path.join(WORKSPACE_DIR, "articles"))
+    deleted_count = 0
+    for p in paths:
+        abs_path = os.path.abspath(p if os.path.isabs(p) else os.path.join(WORKSPACE_DIR, p))
+        if abs_path.startswith(articles_dir) and abs_path.endswith(".md") and os.path.exists(abs_path):
+            try:
+                os.remove(abs_path)
+                deleted_count += 1
+            except Exception as e:
+                logger.error(f"批量删除文章 {abs_path} 失败: {e}")
+                
+    return jsonify({"success": True, "deleted_count": deleted_count, "message": f"成功删除 {deleted_count} 篇草稿文章"})
 
 @app.route("/api/articles/delete", methods=["POST"])
 def api_delete_article():

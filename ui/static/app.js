@@ -1,66 +1,100 @@
-// 微信公众号 Markdown 自动排版与同步工具 UI 前端交互逻辑
+// ==========================================================================
+// AutoGZH Enterprise SaaS UI - Ant Design / Element Plus 交互控制引擎
+// ==========================================================================
 
-// 状态管理
+// 全局响应式状态
 const state = {
-    selectedMdPath: "",
-    selectedCoverPath: "",
-    activeFileTab: "workspace", // workspace | manual
-    activeCoverTab: "workspace",  // workspace | manual
-    activeView: "library", // workspace | library
+    // 视图导航: 'library' (文章管理与排期) | 'workspace' (极速排版与创作)
+    activeView: "library",
+    
+    // 数据模型
     articles: [],
-    currentFilter: "all",
-    searchKeyword: "",
-    stats: { total: 0, draft: 0, scheduled: 0, synced: 0 }
+    filteredArticles: [],
+    stats: { total: 0, draft: 0, scheduled: 0, synced: 0 },
+    
+    // 表格多选集合 (存储选中的 relative_path)
+    selectedPaths: new Set(),
+    
+    // 分页系统
+    pagination: {
+        page: 1,
+        pageSize: 10,
+        totalPages: 1
+    },
+    
+    // 内联表单筛选状态
+    filters: {
+        search: "",
+        status: "all",
+        style: "all"
+    },
+    
+    // 工作台状态
+    activeFileTab: "workspace",
+    activeCoverTab: "workspace"
 };
 
-// 页面加载完毕后初始化
+const STYLE_NAME_MAP = {
+    "story": "硬核实战橙",
+    "tech": "深邃科技蓝",
+    "default": "优雅茶青",
+    "minimal": "极简冷灰",
+    "warm": "暖意秋橙"
+};
+
+// 页面加载就绪后初始化
 document.addEventListener("DOMContentLoaded", () => {
     initApp();
 });
 
 function initApp() {
-    // 1. 加载配置信息
     loadConfig();
-    
-    // 2. 加载可用排版样式主题
     loadThemes();
-
-    // 3. 加载工作区文件列表
     loadWorkspaceFiles();
-    
-    // 4. 加载文章管理与排期库
     loadArticlesCatalog();
-    
-    // 5. 注册事件监听器
     setupEventListeners();
 }
 
-// --------------------------------------------------------------------------
-// 数据加载方法
-// --------------------------------------------------------------------------
+// ==========================================================================
+// 1. 数据加载与同步
+// ==========================================================================
 
-// 加载可用主题
+// 加载可用排版主题
 async function loadThemes() {
     try {
         const response = await fetch("/api/themes");
         if (!response.ok) return;
         const themes = await response.json();
-        const themeSelect = document.getElementById("theme-style");
-        if (themeSelect && Array.isArray(themes)) {
-            themeSelect.innerHTML = "";
+        
+        // 工作台下拉框
+        const wsSelect = document.getElementById("theme-style");
+        if (wsSelect && Array.isArray(themes)) {
+            wsSelect.innerHTML = "";
             themes.forEach(t => {
                 const opt = document.createElement("option");
                 opt.value = t.id;
                 opt.textContent = t.name;
-                themeSelect.appendChild(opt);
+                wsSelect.appendChild(opt);
+            });
+        }
+        
+        // 顶部筛选主题下拉框
+        const filterSelect = document.getElementById("filter-style");
+        if (filterSelect && Array.isArray(themes)) {
+            filterSelect.innerHTML = '<option value="all">全部风格</option>';
+            themes.forEach(t => {
+                const opt = document.createElement("option");
+                opt.value = t.id;
+                opt.textContent = STYLE_NAME_MAP[t.id] || t.name;
+                filterSelect.appendChild(opt);
             });
         }
     } catch (e) {
-        console.warn("加载主题列表失败:", e);
+        console.warn("加载主题失败:", e);
     }
 }
 
-// 加载配置
+// 加载微信配置
 async function loadConfig() {
     try {
         const response = await fetch("/api/config");
@@ -73,25 +107,22 @@ async function loadConfig() {
         document.getElementById("show_cover_pic").checked = data.show_cover_pic === 1;
         document.getElementById("need_open_comment").checked = data.need_open_comment === 1;
         document.getElementById("only_less_tags").checked = data.only_less_tags === 1;
-        
-        appendLog("成功加载微信公众号配置信息。", "info");
     } catch (error) {
-        showToast("加载配置失败：" + error.message, "error");
-        appendLog("加载公众号配置失败，请检查配置文件格式。", "error");
+        showToast("加载微信配置失败: " + error.message, "error");
     }
 }
 
-// 保存配置
+// 保存微信配置
 async function saveConfig(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const btn = document.getElementById("save-config-btn");
     btn.disabled = true;
     btn.textContent = "保存中...";
     
     const payload = {
-        appid: document.getElementById("appid").value,
-        secret: document.getElementById("secret").value,
-        author: document.getElementById("author").value,
+        appid: document.getElementById("appid").value.trim(),
+        secret: document.getElementById("secret").value.trim(),
+        author: document.getElementById("author").value.trim(),
         show_cover_pic: document.getElementById("show_cover_pic").checked ? 1 : 0,
         need_open_comment: document.getElementById("need_open_comment").checked ? 1 : 0,
         only_less_tags: document.getElementById("only_less_tags").checked ? 1 : 0
@@ -106,17 +137,17 @@ async function saveConfig(e) {
         const data = await response.json();
         
         if (data.success) {
-            showToast("配置保存成功！", "success");
+            showToast("微信配置保存成功！", "success");
+            closeConfigModal();
             appendLog("系统配置已更新并写入本地 config.yaml。", "success");
         } else {
             throw new Error(data.message);
         }
     } catch (error) {
-        showToast("保存失败：" + error.message, "error");
-        appendLog("保存配置失败: " + error.message, "error");
+        showToast("保存配置失败: " + error.message, "error");
     } finally {
         btn.disabled = false;
-        btn.textContent = "保存系统配置";
+        btn.textContent = "保存配置";
     }
 }
 
@@ -127,477 +158,33 @@ async function loadWorkspaceFiles() {
         if (!response.ok) throw new Error("获取文件列表失败");
         const data = await response.json();
         
-        // 填充 Markdown 选择框
         const mdSelect = document.getElementById("md-file-select");
-        mdSelect.innerHTML = '<option value="">-- 请选择工作区内的 Markdown 文件 --</option>';
-        data.markdown_files.forEach(file => {
-            const opt = document.createElement("option");
-            opt.value = file;
-            opt.textContent = file;
-            mdSelect.appendChild(opt);
-        });
+        if (mdSelect) {
+            mdSelect.innerHTML = '<option value="">-- 请选择工作区内的 Markdown 文件 --</option>';
+            data.markdown_files.forEach(file => {
+                const opt = document.createElement("option");
+                opt.value = file;
+                opt.textContent = file;
+                mdSelect.appendChild(opt);
+            });
+        }
         
-        // 填充图片选择框
         const coverSelect = document.getElementById("cover-file-select");
-        coverSelect.innerHTML = '<option value="">-- 请选择工作区内的封面图片 --</option>';
-        data.image_files.forEach(file => {
-            const opt = document.createElement("option");
-            opt.value = file;
-            opt.textContent = file;
-            coverSelect.appendChild(opt);
-        });
-        
-        document.getElementById("workspace-path").textContent = "auto-gzh";
-        appendLog(`工作区扫描完毕: 发现 ${data.markdown_files.length} 个 Markdown 文件, ${data.image_files.length} 张图片。`, "info");
-    } catch (error) {
-        showToast("加载工作区文件失败", "error");
-        appendLog("扫描工作区文件失败，请检查程序运行路径权限。", "error");
-    }
-}
-
-// --------------------------------------------------------------------------
-// Frontmatter 元数据智能识别
-// --------------------------------------------------------------------------
-
-async function checkMdFrontmatter(mdPath) {
-    const banner = document.getElementById("frontmatter-banner");
-    const msgSpan = document.getElementById("frontmatter-msg");
-    
-    if (!mdPath || !mdPath.trim()) {
-        if (banner) banner.classList.add("hidden");
-        return;
-    }
-    
-    try {
-        const response = await fetch("/api/parse-frontmatter", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ md_path: mdPath.trim() })
-        });
-        const data = await response.json();
-        
-        if (data.success && data.has_frontmatter) {
-            const fm = data.frontmatter;
-            const recognized = [];
-            
-            if (fm.title) {
-                document.getElementById("article-title").value = fm.title;
-                recognized.push("标题");
-            }
-            if (fm.author) {
-                document.getElementById("author").value = fm.author;
-                recognized.push("作者");
-            }
-            if (fm.digest) {
-                document.getElementById("article-digest").value = fm.digest;
-                recognized.push("摘要");
-            }
-            if (fm.content_source_url) {
-                document.getElementById("content-source-url").value = fm.content_source_url;
-                recognized.push("原文链接");
-            }
-            if (fm.style) {
-                const styleSelect = document.getElementById("theme-style");
-                if (styleSelect) styleSelect.value = fm.style;
-                recognized.push("主题");
-            }
-            if (fm.pygments_style) {
-                const pySelect = document.getElementById("pygments-style");
-                if (pySelect) pySelect.value = fm.pygments_style;
-                recognized.push("代码高亮");
-            }
-            if (typeof fm.enable_footnotes === "boolean") {
-                const fnBox = document.getElementById("enable-footnotes");
-                if (fnBox) fnBox.checked = fm.enable_footnotes;
-                recognized.push("脚注开关");
-            }
-            if (fm.cover) {
-                document.getElementById("cover-path-manual").value = fm.cover;
-                switchCoverTab("manual");
-                recognized.push("封面图");
-            }
-            
-            if (banner && msgSpan) {
-                msgSpan.textContent = `已从 Frontmatter 自动预填: ${recognized.join("、")}`;
-                banner.classList.remove("hidden");
-            }
-            appendLog(`✨ 检测到文章 Frontmatter，已自动填充要素: ${recognized.join("、")}`, "success");
-            showToast("已自动读取文章 Frontmatter 元数据！", "info");
-        } else {
-            if (banner) banner.classList.add("hidden");
-        }
-    } catch (e) {
-        if (banner) banner.classList.add("hidden");
-    }
-}
-
-// --------------------------------------------------------------------------
-// 核心操作：预览与同步
-// --------------------------------------------------------------------------
-
-// 执行排版编译预览
-async function triggerPreview() {
-    const mdPath = getSelectedMdPath();
-    const styleTheme = document.getElementById("pygments-style").value;
-    const themeStyle = document.getElementById("theme-style") ? document.getElementById("theme-style").value : "default";
-    const enableFootnotes = document.getElementById("enable-footnotes") ? document.getElementById("enable-footnotes").checked : true;
-    
-    if (!mdPath) {
-        showToast("请先选择或输入 Markdown 文件路径", "error");
-        appendLog("预览失败: 未选择 Markdown 文件。", "warning");
-        return;
-    }
-    
-    const previewBtn = document.getElementById("preview-btn");
-    previewBtn.disabled = true;
-    previewBtn.textContent = "编译中...";
-    
-    appendLog(`开始本地排版编译 [主题: ${themeStyle}]，正在解析 '${mdPath}'...`, "info");
-    
-    try {
-        const response = await fetch("/api/preview", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                md_path: mdPath,
-                style: themeStyle,
-                pygments_style: styleTheme,
-                enable_footnotes: enableFootnotes
-            })
-        });
-        
-        const data = await parseJsonResponse(response);
-        
-        if (data.success) {
-            renderHtmlInIframe(data.html);
-            appendLog("排版编译成功！CSS 样式及高亮代码已完全行内化注入，已加载到预览视口中。", "success");
-            showToast("本地编译预览成功！", "success");
-        } else {
-            throw new Error(data.message || "编译未知错误");
+        if (coverSelect) {
+            coverSelect.innerHTML = '<option value="">-- 请选择封面图片 --</option>';
+            data.image_files.forEach(file => {
+                const opt = document.createElement("option");
+                opt.value = file;
+                opt.textContent = file;
+                coverSelect.appendChild(opt);
+            });
         }
     } catch (error) {
-        showToast("编译失败：" + error.message, "error");
-        appendLog("编译排版失败: " + error.message, "error");
-    } finally {
-        previewBtn.disabled = false;
-        previewBtn.textContent = "👁️ 编译并本地预览";
+        console.warn("加载工作区文件异常:", error);
     }
 }
 
-// 执行微信草稿箱同步
-async function triggerSync() {
-    const mdPath = getSelectedMdPath();
-    const coverPath = getSelectedCoverPath();
-    const themeStyle = document.getElementById("theme-style") ? document.getElementById("theme-style").value : "default";
-    const enableFootnotes = document.getElementById("enable-footnotes") ? document.getElementById("enable-footnotes").checked : true;
-    
-    if (!mdPath) {
-        showToast("请先选择或输入 Markdown 文件路径", "error");
-        appendLog("同步失败: Markdown 路径未填写。", "warning");
-        return;
-    }
-    
-    const syncBtn = document.getElementById("sync-btn");
-    syncBtn.disabled = true;
-    syncBtn.textContent = "正在同步微信...";
-    
-    appendLog("触发微信草稿箱一键同步 (启用 MD5 图片秒传与并发上传)...", "info");
-    appendLog("正在上传封面图素材，上传图文内本地插图，并转换排版 HTML...", "info");
-    
-    const payload = {
-        md_path: mdPath,
-        cover_path: coverPath,
-        title: document.getElementById("article-title").value,
-        author: document.getElementById("author").value,
-        digest: document.getElementById("article-digest").value,
-        style: themeStyle,
-        pygments_style: document.getElementById("pygments-style").value,
-        enable_footnotes: enableFootnotes,
-        content_source_url: document.getElementById("content-source-url").value
-    };
-    
-    try {
-        const response = await fetch("/api/sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        
-        const data = await response.json();
-        
-        if (response.status === 403 && data.error_type === "IP_WHITELIST") {
-            appendLog(`❌ 微信 API 报错: 40164 (IP 白名单错误)`, "error");
-            renderIpWhitelistWarning(data.ip);
-            showToast("同步失败：当前 IP 未加白", "error");
-        } else if (data.success) {
-            appendLog(`🎉 微信图文草稿同步成功！`, "success");
-            appendLog(`👉 草稿 Media ID: ${data.media_id}`, "success");
-            appendLog(`👉 标题: ${data.title} | 作者: ${data.author}`, "info");
-            appendLog(`👉 摘要: ${data.digest}`, "info");
-            appendLog(`请前往微信公众平台后台 -> 「内容分析/草稿箱」查看、预览并发送您的文章。`, "success");
-            showToast("微信草稿箱同步成功！", "success");
-        } else {
-            throw new Error(data.message);
-        }
-    } catch (error) {
-        showToast("同步失败：" + error.message, "error");
-        appendLog("微信同步任务失败: " + error.message, "error");
-    } finally {
-        syncBtn.disabled = false;
-        syncBtn.textContent = "🚀 一键同步草稿箱";
-    }
-}
-
-// --------------------------------------------------------------------------
-// 辅助交互与 UI 操作方法
-// --------------------------------------------------------------------------
-
-function setupEventListeners() {
-    // 监听表单配置保存
-    document.getElementById("config-form").addEventListener("submit", saveConfig);
-    
-    // 绑定按钮点击
-    document.getElementById("preview-btn").addEventListener("click", triggerPreview);
-    document.getElementById("sync-btn").addEventListener("click", triggerSync);
-    document.getElementById("clear-console-btn").addEventListener("click", clearConsole);
-    
-    // 监听 Markdown 文件选择变化，自动触发 Frontmatter 检测
-    document.getElementById("md-file-select").addEventListener("change", (e) => {
-        checkMdFrontmatter(e.target.value);
-    });
-    document.getElementById("md-path-manual").addEventListener("change", (e) => {
-        checkMdFrontmatter(e.target.value);
-    });
-}
-
-window.switchFileTab = function(tabName) {
-    state.activeFileTab = tabName;
-    
-    const wsBtn = document.querySelectorAll(".tab-btn")[0];
-    const mnBtn = document.querySelectorAll(".tab-btn")[1];
-    
-    const wsTab = document.getElementById("workspace-tab");
-    const mnTab = document.getElementById("manual-tab");
-    
-    if (tabName === "workspace") {
-        wsBtn.classList.add("active");
-        mnBtn.classList.remove("active");
-        wsTab.classList.remove("hidden");
-        mnTab.classList.add("hidden");
-    } else {
-        wsBtn.classList.remove("active");
-        mnBtn.classList.add("active");
-        wsTab.classList.add("hidden");
-        mnTab.classList.remove("hidden");
-    }
-};
-
-window.switchCoverTab = function(tabName) {
-    state.activeCoverTab = tabName;
-    
-    const wsBtn = document.querySelectorAll(".tab-btn")[2];
-    const mnBtn = document.querySelectorAll(".tab-btn")[3];
-    
-    const wsTab = document.getElementById("cover-workspace-tab");
-    const mnTab = document.getElementById("cover-manual-tab");
-    
-    if (tabName === "workspace") {
-        wsBtn.classList.add("active");
-        mnBtn.classList.remove("active");
-        wsTab.classList.remove("hidden");
-        mnTab.classList.add("hidden");
-    } else {
-        wsBtn.classList.remove("active");
-        mnBtn.classList.add("active");
-        wsTab.classList.add("hidden");
-        mnTab.classList.remove("hidden");
-    }
-};
-
-// 密码框明文/暗文切换
-window.togglePasswordVisibility = function(id) {
-    const input = document.getElementById(id);
-    const trigger = input.nextElementSibling;
-    if (input.type === "password") {
-        input.type = "text";
-        trigger.textContent = "🔒";
-    } else {
-        input.type = "password";
-        trigger.textContent = "👁️";
-    }
-};
-
-// 打开系统原生文件选择对话框
-window.browseFile = async function(fileType) {
-    const isMd = fileType === 'md';
-    const manualInput = isMd ? document.getElementById("md-path-manual") : document.getElementById("cover-path-manual");
-    
-    appendLog(`正为您拉起 Windows 原生文件选择对话框...`, "info");
-    
-    try {
-        const response = await fetch("/api/select-file", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ file_type: fileType })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success && data.file_path) {
-            manualInput.value = data.file_path;
-            
-            if (isMd) {
-                switchFileTab('manual');
-                checkMdFrontmatter(data.file_path);
-            } else {
-                switchCoverTab('manual');
-            }
-            
-            appendLog(`成功选择本地文件: '${data.file_path}'`, "success");
-            showToast("已导入所选文件路径！", "success");
-        } else if (data.cancelled) {
-            appendLog("已取消文件选择。", "info");
-        } else {
-            throw new Error(data.message || "文件选择失败");
-        }
-    } catch (error) {
-        showToast("选择文件失败: " + error.message, "error");
-        appendLog("打开文件选择窗口异常: " + error.message, "error");
-    }
-};
-
-// 获取最终选定的文件路径
-function getSelectedMdPath() {
-    const manualVal = document.getElementById("md-path-manual").value.stripOrEmpty();
-    const selectVal = document.getElementById("md-file-select").value;
-    
-    if (state.activeFileTab === "manual") {
-        return manualVal || selectVal;
-    }
-    return selectVal || manualVal;
-}
-
-function getSelectedCoverPath() {
-    const manualVal = document.getElementById("cover-path-manual").value.stripOrEmpty();
-    const selectVal = document.getElementById("cover-file-select").value;
-    
-    if (state.activeCoverTab === "manual") {
-        return manualVal || selectVal;
-    }
-    return selectVal || manualVal;
-}
-
-String.prototype.stripOrEmpty = function() {
-    return this.trim();
-};
-
-// 在 Iframe 中载入编译完毕的 HTML
-function renderHtmlInIframe(htmlContent) {
-    const iframe = document.getElementById("preview-frame");
-    const placeholder = document.getElementById("preview-placeholder");
-    
-    placeholder.classList.add("hidden");
-    
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-}
-
-// 写入控制台日志
-function appendLog(message, type = "info") {
-    const logsContainer = document.getElementById("console-logs");
-    const line = document.createElement("div");
-    line.className = `log-line ${type}`;
-    
-    const timeStr = new Date().toLocaleTimeString();
-    line.textContent = `[${timeStr}] ${message}`;
-    
-    logsContainer.appendChild(line);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-}
-
-// 清理控制台
-function clearConsole() {
-    document.getElementById("console-logs").innerHTML = "";
-    appendLog("控制台已清空。", "info");
-}
-
-// 显示 Toast 浮窗提示
-function showToast(message, type = "success") {
-    const toast = document.getElementById("toast");
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    toast.classList.remove("hidden");
-    
-    setTimeout(() => {
-        toast.classList.add("hidden");
-    }, 3000);
-}
-
-// 渲染漂亮的 IP 加白引导卡片
-function renderIpWhitelistWarning(ip) {
-    const logsContainer = document.getElementById("console-logs");
-    
-    const card = document.createElement("div");
-    card.className = "ip-warning-card";
-    card.innerHTML = `
-        <h4>❌ IP 未加白名单错误</h4>
-        <p>您当前运行此工具的公网 IP <code>${ip}</code> 未加入微信公众号的 IP 白名单配置中。</p>
-        <p><strong>解决方案：</strong></p>
-        <p>1. 登录<strong>「微信公众平台」</strong>(mp.weixin.qq.com)<br>
-           2. 进入左侧菜单: <strong>「设置与开发」 -> 「基本配置」</strong><br>
-           3. 找到<strong>「IP白名单」</strong>配置项，点击「修改」<br>
-           4. 将当前公网 IP 地址 【 <code>${ip}</code> 】 添加到列表中保存即可。</p>
-    `;
-    
-    logsContainer.appendChild(card);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-}
-
-// 统一 JSON 解析防御辅助函数
-async function parseJsonResponse(response) {
-    const text = await response.text();
-    try {
-        return JSON.parse(text);
-    } catch (e) {
-        throw new Error(`服务端异常 [HTTP ${response.status}]`);
-    }
-}
-
-// --------------------------------------------------------------------------
-// 视图切换与文章管理与排期库
-// --------------------------------------------------------------------------
-
-// 视图切换
-window.switchMainView = function(viewName) {
-    state.activeView = viewName;
-    const wsBtn = document.getElementById("nav-btn-workspace");
-    const libBtn = document.getElementById("nav-btn-library");
-    const sideWsBtn = document.getElementById("side-nav-workspace");
-    const sideLibBtn = document.getElementById("side-nav-library");
-    const wsView = document.getElementById("workspace-view");
-    const libView = document.getElementById("library-view");
-
-    if (viewName === "workspace") {
-        if (wsBtn) wsBtn.classList.add("active");
-        if (libBtn) libBtn.classList.remove("active");
-        if (sideWsBtn) sideWsBtn.classList.add("active");
-        if (sideLibBtn) sideLibBtn.classList.remove("active");
-        if (wsView) wsView.classList.remove("hidden");
-        if (libView) libView.classList.add("hidden");
-    } else {
-        if (wsBtn) wsBtn.classList.remove("active");
-        if (libBtn) libBtn.classList.add("active");
-        if (sideWsBtn) sideWsBtn.classList.remove("active");
-        if (sideLibBtn) sideLibBtn.classList.add("active");
-        if (wsView) wsView.classList.add("hidden");
-        if (libView) libView.classList.remove("hidden");
-        loadArticlesCatalog();
-    }
-};
-
-// 加载文章库
+// 加载文章库完整元数据并驱动表格渲染
 async function loadArticlesCatalog() {
     try {
         const response = await fetch("/api/articles");
@@ -607,71 +194,370 @@ async function loadArticlesCatalog() {
         state.articles = data.articles || [];
         state.stats = data.stats || { total: 0, draft: 0, scheduled: 0, synced: 0 };
         
-        // 更新顶栏与侧边栏计数
-        const badge = document.getElementById("library-total-badge");
-        if (badge) badge.textContent = state.stats.total;
+        // 更新指标条与菜单角标
+        document.getElementById("count-all").textContent = state.stats.total;
+        document.getElementById("count-draft").textContent = state.stats.draft;
+        document.getElementById("count-scheduled").textContent = state.stats.scheduled;
+        document.getElementById("count-synced").textContent = state.stats.synced;
+        document.getElementById("side-library-badge").textContent = state.stats.total;
         
-        const sideBadge = document.getElementById("side-library-badge");
-        if (sideBadge) sideBadge.textContent = state.stats.total;
+        // 清理不存在的已选项
+        const existingPaths = new Set(state.articles.map(a => a.path));
+        state.selectedPaths.forEach(p => {
+            if (!existingPaths.has(p)) state.selectedPaths.delete(p);
+        });
         
-        const countAll = document.getElementById("count-all");
-        if (countAll) countAll.textContent = state.stats.total;
-        
-        const countDraft = document.getElementById("count-draft");
-        if (countDraft) countDraft.textContent = state.stats.draft;
-        
-        const countScheduled = document.getElementById("count-scheduled");
-        if (countScheduled) countScheduled.textContent = state.stats.scheduled;
-        
-        const countSynced = document.getElementById("count-synced");
-        if (countSynced) countSynced.textContent = state.stats.synced;
-        
-        renderArticlesGrid();
+        applyFiltersAndRenderTable();
     } catch (error) {
-        console.warn("加载文章库失败:", error);
+        showToast("加载文章数据失败: " + error.message, "error");
     }
 }
 
-// 筛选文章
-window.filterArticles = function(status) {
-    state.currentFilter = status;
+// ==========================================================================
+// 2. 筛选、分页与 Ant Data Table 渲染引擎
+// ==========================================================================
+
+function handleFilterSearch() {
+    const searchVal = document.getElementById("filter-search").value.trim().toLowerCase();
+    const statusVal = document.getElementById("filter-status").value;
+    const styleVal = document.getElementById("filter-style").value;
     
-    document.querySelectorAll(".filter-pill").forEach(pill => {
-        if (pill.getAttribute("data-filter") === status) {
-            pill.classList.add("active");
+    state.filters.search = searchVal;
+    state.filters.status = statusVal;
+    state.filters.style = styleVal;
+    
+    state.pagination.page = 1; // 检索时重置到第1页
+    applyFiltersAndRenderTable();
+}
+
+function handleFilterReset() {
+    document.getElementById("filter-search").value = "";
+    document.getElementById("filter-status").value = "all";
+    document.getElementById("filter-style").value = "all";
+    
+    state.filters = { search: "", status: "all", style: "all" };
+    state.pagination.page = 1;
+    applyFiltersAndRenderTable();
+}
+
+function applyFiltersAndRenderTable() {
+    const { search, status, style } = state.filters;
+    
+    state.filteredArticles = state.articles.filter(item => {
+        // 状态筛选
+        if (status !== "all" && item.status !== status) {
+            return false;
+        }
+        // 风格筛选
+        if (style !== "all" && item.style !== style) {
+            return false;
+        }
+        // 搜索关键词 (标题 / 作者 / 摘要 / 标签)
+        if (search) {
+            const titleMatch = (item.title || "").toLowerCase().includes(search);
+            const authorMatch = (item.author || "").toLowerCase().includes(search);
+            const digestMatch = (item.digest || "").toLowerCase().includes(search);
+            const tagsMatch = Array.isArray(item.tags) && item.tags.some(t => String(t).toLowerCase().includes(search));
+            if (!titleMatch && !authorMatch && !digestMatch && !tagsMatch) {
+                return false;
+            }
+        }
+        return true;
+    });
+    
+    renderArticlesTable();
+}
+
+function renderArticlesTable() {
+    const tbody = document.getElementById("articles-table-body");
+    if (!tbody) return;
+    
+    const total = state.filteredArticles.length;
+    const { page, pageSize } = state.pagination;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    state.pagination.totalPages = totalPages;
+    
+    // 如果当前页超出范围则修正
+    if (page > totalPages) {
+        state.pagination.page = totalPages;
+    }
+    
+    const startIndex = (state.pagination.page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, total);
+    const currentPageItems = state.filteredArticles.slice(startIndex, endIndex);
+    
+    // 更新分页器显示
+    document.getElementById("pagination-total").textContent = total;
+    document.getElementById("page-number-display").textContent = `第 ${state.pagination.page} / ${totalPages} 页`;
+    document.getElementById("page-prev-btn").disabled = state.pagination.page <= 1;
+    document.getElementById("page-next-btn").disabled = state.pagination.page >= totalPages;
+    
+    // 空数据展示
+    if (currentPageItems.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 48px 0;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">📂</div>
+                    <div>暂无符合筛选条件的文章数据</div>
+                </td>
+            </tr>
+        `;
+        updateSelectionToolbar();
+        return;
+    }
+    
+    let html = "";
+    currentPageItems.forEach(item => {
+        const isSelected = state.selectedPaths.has(item.path);
+        const styleText = STYLE_NAME_MAP[item.style] || item.style || "默认风格";
+        const wordCountText = item.word_count ? item.word_count.toLocaleString() : "--";
+        
+        // 状态徽标与状态文本
+        let badgeDotClass = "draft";
+        let statusLabel = "待审核";
+        if (item.status === "synced") {
+            badgeDotClass = "synced";
+            statusLabel = "已入库草稿";
+        } else if (item.status === "scheduled") {
+            badgeDotClass = "scheduled";
+            statusLabel = "已排期";
+        }
+        
+        // 封面缩略图
+        const coverImgSrc = item.cover_url || "/api/local-image/assets/cover.png";
+        
+        html += `
+            <tr class="${isSelected ? 'row-selected' : ''}" data-path="${escapeHtml(item.path)}">
+                <td class="col-selection">
+                    <input type="checkbox" class="ant-checkbox" ${isSelected ? 'checked' : ''} onchange="handleRowSelect('${escapeHtml(item.path)}', this.checked)">
+                </td>
+                <td class="col-cover">
+                    <img src="${coverImgSrc}" alt="thumb" class="article-thumb-img" onerror="this.onerror=null;this.src='/ui/static/style.css'">
+                </td>
+                <td class="col-title-main">
+                    <div class="table-article-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+                    <div class="table-article-digest" title="${escapeHtml(item.digest || '')}">${escapeHtml(item.digest || '暂无摘要描述')}</div>
+                </td>
+                <td>
+                    <span class="ant-tag ant-tag-primary">${escapeHtml(styleText)}</span>
+                </td>
+                <td style="text-align: right; font-family: SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--text-regular);">
+                    ${wordCountText}
+                </td>
+                <td>
+                    <input type="date" class="table-schedule-input" value="${escapeHtml(item.scheduled_date || '')}" onchange="setArticleSchedule('${escapeHtml(item.path)}', this.value)" title="选择发文排期">
+                </td>
+                <td>
+                    <span class="ant-badge-status">
+                        <span class="ant-badge-dot ${badgeDotClass}"></span>
+                        <span>${statusLabel}</span>
+                    </span>
+                </td>
+                <td class="col-actions">
+                    <button class="ant-link" onclick="previewFromCatalog('${escapeHtml(item.path)}')">预览</button>
+                    <span class="action-divider">|</span>
+                    <button class="ant-link" onclick="promptSchedule('${escapeHtml(item.path)}', '${escapeHtml(item.scheduled_date || '')}')">排期</button>
+                    <span class="action-divider">|</span>
+                    <button class="ant-link" onclick="syncSingleArticle('${escapeHtml(item.path)}', this)">${item.status === 'synced' ? '重推' : '入库'}</button>
+                    <span class="action-divider">|</span>
+                    <button class="ant-link danger" onclick="deleteArticle('${escapeHtml(item.path)}')">删除</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    updateSelectionToolbar();
+}
+
+// 分页翻页
+function changePage(delta) {
+    const newPage = state.pagination.page + delta;
+    if (newPage >= 1 && newPage <= state.pagination.totalPages) {
+        state.pagination.page = newPage;
+        renderArticlesTable();
+    }
+}
+
+// 切换每页容量
+function changePageSize(size) {
+    state.pagination.pageSize = parseInt(size, 10) || 10;
+    state.pagination.page = 1;
+    renderArticlesTable();
+}
+
+// ==========================================================================
+// 3. 表格勾选与批量操作 (Batch Operations)
+// ==========================================================================
+
+function handleRowSelect(path, checked) {
+    if (checked) {
+        state.selectedPaths.add(path);
+    } else {
+        state.selectedPaths.delete(path);
+    }
+    updateSelectionToolbar();
+    
+    // 更新当前行背景
+    const row = document.querySelector(`tr[data-path="${path}"]`);
+    if (row) {
+        if (checked) row.classList.add("row-selected");
+        else row.classList.remove("row-selected");
+    }
+}
+
+function handleSelectAllChange(checked) {
+    const { page, pageSize } = state.pagination;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, state.filteredArticles.length);
+    const currentPageItems = state.filteredArticles.slice(startIndex, endIndex);
+    
+    currentPageItems.forEach(item => {
+        if (checked) {
+            state.selectedPaths.add(item.path);
         } else {
-            pill.classList.remove("active");
+            state.selectedPaths.delete(item.path);
         }
     });
     
-    renderArticlesGrid();
-};
+    renderArticlesTable();
+}
 
-// 实时搜索文章
-window.onArticleSearch = function(keyword) {
-    state.searchKeyword = (keyword || "").trim().toLowerCase();
-    const clearBtn = document.getElementById("clear-search-btn");
-    if (clearBtn) {
-        if (state.searchKeyword) {
-            clearBtn.classList.remove("hidden");
-        } else {
-            clearBtn.classList.add("hidden");
-        }
+function updateSelectionToolbar() {
+    const count = state.selectedPaths.size;
+    document.getElementById("selected-count").textContent = count;
+    
+    const btnSync = document.getElementById("btn-batch-sync");
+    const btnSchedule = document.getElementById("btn-batch-schedule");
+    const btnDelete = document.getElementById("btn-batch-delete");
+    
+    const disabled = count === 0;
+    btnSync.disabled = disabled;
+    btnSchedule.disabled = disabled;
+    btnDelete.disabled = disabled;
+    
+    // 全选复选框状态判定
+    const selectAllBox = document.getElementById("select-all-checkbox");
+    if (!selectAllBox) return;
+    
+    const { page, pageSize } = state.pagination;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, state.filteredArticles.length);
+    const currentPageItems = state.filteredArticles.slice(startIndex, endIndex);
+    
+    if (currentPageItems.length === 0) {
+        selectAllBox.checked = false;
+        selectAllBox.indeterminate = false;
+    } else {
+        const selectedOnPage = currentPageItems.filter(item => state.selectedPaths.has(item.path)).length;
+        selectAllBox.checked = selectedOnPage === currentPageItems.length;
+        selectAllBox.indeterminate = selectedOnPage > 0 && selectedOnPage < currentPageItems.length;
     }
-    renderArticlesGrid();
-};
+}
 
-window.clearArticleSearch = function() {
-    const input = document.getElementById("article-search-input");
-    if (input) input.value = "";
-    onArticleSearch("");
-};
+// 批量入库微信
+async function handleBatchSync() {
+    const paths = Array.from(state.selectedPaths);
+    if (paths.length === 0) return;
+    
+    const btn = document.getElementById("btn-batch-sync");
+    btn.disabled = true;
+    btn.textContent = `⏳ 正在推送 (${paths.length})...`;
+    
+    showToast(`正在批量入库 ${paths.length} 篇文章至微信草稿箱...`, "info");
+    
+    try {
+        const response = await fetch("/api/articles/batch-sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paths: paths })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`批量入库成功: 成功 ${data.success_count} 篇，失败 ${data.fail_count} 篇`, data.fail_count === 0 ? "success" : "warning");
+            appendLog(`批量同步微信草稿完成: 成功 ${data.success_count} / 失败 ${data.fail_count}`, "success");
+            state.selectedPaths.clear();
+            await loadArticlesCatalog();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("批量入库异常: " + e.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🚀 批量入库微信";
+    }
+}
 
-// 设定发文排期
-window.setArticleSchedule = async function(path, dateVal) {
+// 批量排期
+async function handleBatchSchedulePrompt() {
+    const paths = Array.from(state.selectedPaths);
+    if (paths.length === 0) return;
+    
+    const todayStr = new Date().toISOString().split("T")[0];
+    const targetDate = prompt(`请为选中的 ${paths.length} 篇文章设定发文日期 (格式 YYYY-MM-DD，留空则清空排期):`, todayStr);
+    if (targetDate === null) return;
+    
+    try {
+        const response = await fetch("/api/articles/batch-schedule", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                paths: paths,
+                scheduled_date: targetDate.trim()
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast(data.message, "success");
+            state.selectedPaths.clear();
+            await loadArticlesCatalog();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("批量排期失败: " + e.message, "error");
+    }
+}
+
+// 批量删除
+async function handleBatchDelete() {
+    const paths = Array.from(state.selectedPaths);
+    if (paths.length === 0) return;
+    
+    if (!confirm(`警告：确定要从工作区批量删除选中的 ${paths.length} 篇 Markdown 草稿吗？此操作不可逆。`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch("/api/articles/batch-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paths: paths })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast(data.message, "success");
+            state.selectedPaths.clear();
+            await loadArticlesCatalog();
+            await loadWorkspaceFiles();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("批量删除失败: " + e.message, "error");
+    }
+}
+
+// ==========================================================================
+// 4. 单行操作与工作台联动
+// ==========================================================================
+
+// 设定单篇文章排期
+async function setArticleSchedule(path, dateVal) {
     const newStatus = dateVal ? "scheduled" : "draft";
     try {
-        appendLog(`正在为文章 '${path}' 更新排期至: ${dateVal || "无 (恢复待审核)"}...`, "info");
         const res = await fetch("/api/articles/update", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -683,20 +569,87 @@ window.setArticleSchedule = async function(path, dateVal) {
         });
         const data = await res.json();
         if (data.success) {
-            showToast(dateVal ? `已设定排期: ${dateVal}` : "已清除排期", "success");
-            appendLog(`排期已更新: ${path} -> [${newStatus}] ${dateVal}`, "success");
+            showToast(dateVal ? `已排期: ${dateVal}` : "已恢复待审核状态", "success");
             await loadArticlesCatalog();
         } else {
             throw new Error(data.message);
         }
     } catch (e) {
-        showToast("排期更新失败: " + e.message, "error");
-        appendLog("更新排期失败: " + e.message, "error");
+        showToast("更新排期失败: " + e.message, "error");
     }
-};
+}
 
-// 从卡片直连预览：跳回工作区并自动渲染
-window.previewFromCatalog = async function(path) {
+// 快捷弹窗改期
+function promptSchedule(path, currentDate) {
+    const newDate = prompt(`请为文章指定排期发文日期 (格式 YYYY-MM-DD，清空则重置为待审核):`, currentDate || "");
+    if (newDate === null) return;
+    setArticleSchedule(path, newDate.trim());
+}
+
+// 单篇直连同步草稿箱
+async function syncSingleArticle(path, btnEl) {
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.textContent = "同步中...";
+    }
+    
+    showToast(`正在推送文章至微信草稿箱...`, "info");
+    
+    try {
+        const res = await fetch("/api/articles/sync-one", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: path })
+        });
+        const data = await res.json();
+        
+        if (res.status === 403 && data.error_type === "IP_WHITELIST") {
+            showToast("同步失败：IP 未加白名单 (" + data.ip + ")", "error");
+            appendLog(`❌ 微信报错 40164: IP [${data.ip}] 未加白名单`, "error");
+        } else if (data.success) {
+            showToast(`《${data.title}》已成功推送到微信草稿箱！`, "success");
+            appendLog(`🎉 文章入库成功: ${data.title} | MediaID: ${data.media_id}`, "success");
+            await loadArticlesCatalog();
+        } else {
+            throw new Error(data.message || "微信 API 异常");
+        }
+    } catch (e) {
+        showToast("同步失败: " + e.message, "error");
+    } finally {
+        if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = "入库";
+        }
+    }
+}
+
+// 单篇删除
+async function deleteArticle(path) {
+    if (!confirm(`确定要删除草稿文件 '${path}' 吗？此操作无法撤销。`)) {
+        return;
+    }
+    try {
+        const res = await fetch("/api/articles/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: path })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("文章已删除", "info");
+            state.selectedPaths.delete(path);
+            await loadArticlesCatalog();
+            await loadWorkspaceFiles();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (e) {
+        showToast("删除异常: " + e.message, "error");
+    }
+}
+
+// 从表格点「预览」：秒切工作台并自动装载编译
+async function previewFromCatalog(path) {
     switchMainView('workspace');
     
     const mdSelect = document.getElementById("md-file-select");
@@ -718,77 +671,297 @@ window.previewFromCatalog = async function(path) {
     
     await checkMdFrontmatter(path);
     await triggerPreview();
-};
+}
 
-// 从卡片一键同步入库微信草稿箱
-window.syncSingleArticle = async function(path, btnEl) {
-    if (btnEl) {
-        btnEl.disabled = true;
-        btnEl.textContent = "⏳ 同步中...";
-    }
+// ==========================================================================
+// 5. 视图切换与模态框
+// ==========================================================================
+
+function switchMainView(viewName) {
+    state.activeView = viewName;
     
-    appendLog(`开始从文章库一键同步 '${path}' 到微信公众平台草稿箱...`, "info");
+    const sideLib = document.getElementById("side-nav-library");
+    const sideWs = document.getElementById("side-nav-workspace");
+    const viewLib = document.getElementById("library-view");
+    const viewWs = document.getElementById("workspace-view");
+    const breadcrumbCurrent = document.getElementById("breadcrumb-current");
+    
+    if (viewName === "library") {
+        sideLib.classList.add("active");
+        sideWs.classList.remove("active");
+        viewLib.classList.remove("hidden");
+        viewWs.classList.add("hidden");
+        breadcrumbCurrent.textContent = "文章管理与排期";
+        loadArticlesCatalog();
+    } else {
+        sideLib.classList.remove("active");
+        sideWs.classList.add("active");
+        viewLib.classList.add("hidden");
+        viewWs.classList.remove("hidden");
+        breadcrumbCurrent.textContent = "极速排版与创作";
+    }
+}
+
+function openConfigModal() {
+    document.getElementById("config-modal").classList.remove("hidden");
+}
+
+function closeConfigModal() {
+    document.getElementById("config-modal").classList.add("hidden");
+}
+
+// 选项卡切换
+function switchFileTab(tab) {
+    state.activeFileTab = tab;
+    const wsTab = document.getElementById("workspace-tab");
+    const mnTab = document.getElementById("manual-tab");
+    const btns = document.querySelectorAll(".form-item-compact .tab-selector-bar")[0].querySelectorAll(".tab-selector-btn");
+    
+    if (tab === "workspace") {
+        btns[0].classList.add("active");
+        btns[1].classList.remove("active");
+        wsTab.classList.remove("hidden");
+        mnTab.classList.add("hidden");
+    } else {
+        btns[0].classList.remove("active");
+        btns[1].classList.add("active");
+        wsTab.classList.add("hidden");
+        mnTab.classList.remove("hidden");
+    }
+}
+
+function switchCoverTab(tab) {
+    state.activeCoverTab = tab;
+    const wsTab = document.getElementById("cover-workspace-tab");
+    const mnTab = document.getElementById("cover-manual-tab");
+    const btns = document.querySelectorAll(".form-item-compact .tab-selector-bar")[1].querySelectorAll(".tab-selector-btn");
+    
+    if (tab === "workspace") {
+        btns[0].classList.add("active");
+        btns[1].classList.remove("active");
+        wsTab.classList.remove("hidden");
+        mnTab.classList.add("hidden");
+    } else {
+        btns[0].classList.remove("active");
+        btns[1].classList.add("active");
+        wsTab.classList.add("hidden");
+        mnTab.classList.remove("hidden");
+    }
+}
+
+// 原生文件选择对话框
+async function browseFile(fileType) {
+    const isMd = fileType === 'md';
+    const manualInput = isMd ? document.getElementById("md-path-manual") : document.getElementById("cover-path-manual");
     
     try {
-        const res = await fetch("/api/articles/sync-one", {
+        const response = await fetch("/api/select-file", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: path })
+            body: JSON.stringify({ file_type: fileType })
         });
-        const data = await res.json();
-        
-        if (res.status === 403 && data.error_type === "IP_WHITELIST") {
-            appendLog(`❌ 微信 API 报错: 40164 (IP 白名单错误)`, "error");
-            renderIpWhitelistWarning(data.ip);
-            showToast("同步失败：当前 IP 未加白", "error");
-        } else if (data.success) {
-            appendLog(`🎉 文章 '${data.title}' 成功同步入库草稿箱！`, "success");
-            appendLog(`👉 草稿 Media ID: ${data.media_id}`, "success");
-            appendLog(`👉 同步时间: ${data.sync_time}`, "info");
-            showToast(`《${data.title}》已入库微信草稿箱！`, "success");
-            await loadArticlesCatalog();
-        } else {
-            throw new Error(data.message || "同步失败");
+        const data = await response.json();
+        if (data.success && data.file_path) {
+            manualInput.value = data.file_path;
+            if (isMd) {
+                switchFileTab('manual');
+                checkMdFrontmatter(data.file_path);
+            } else {
+                switchCoverTab('manual');
+            }
+            showToast("已选择文件: " + data.file_path.split("/").pop(), "success");
         }
     } catch (e) {
-        showToast("入库失败: " + e.message, "error");
-        appendLog(`一键入库失败 [${path}]: ${e.message}`, "error");
-    } finally {
-        if (btnEl) {
-            btnEl.disabled = false;
-            btnEl.textContent = "🚀 一键入库";
-        }
+        showToast("选择文件异常: " + e.message, "error");
     }
-};
+}
 
-// 从工作区安全删除草稿
-window.deleteArticle = async function(path) {
-    if (!confirm(`确定要从本地工作区删除文章 '${path}' 吗？此操作无法撤销。`)) {
+// Frontmatter 智能读取
+async function checkMdFrontmatter(mdPath) {
+    if (!mdPath || !mdPath.trim()) return;
+    try {
+        const response = await fetch("/api/parse-frontmatter", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ md_path: mdPath.trim() })
+        });
+        const data = await response.json();
+        if (data.success && data.has_frontmatter) {
+            const fm = data.frontmatter;
+            if (fm.title) document.getElementById("article-title").value = fm.title;
+            if (fm.digest) document.getElementById("article-digest").value = fm.digest;
+            if (fm.content_source_url) document.getElementById("content-source-url").value = fm.content_source_url;
+            if (fm.style) document.getElementById("theme-style").value = fm.style;
+            if (fm.pygments_style) document.getElementById("pygments-style").value = fm.pygments_style;
+            if (typeof fm.enable_footnotes === "boolean") document.getElementById("enable-footnotes").checked = fm.enable_footnotes;
+            if (fm.cover) {
+                document.getElementById("cover-path-manual").value = fm.cover;
+                switchCoverTab("manual");
+            }
+        }
+    } catch (e) {
+        console.warn("Frontmatter 解析失败:", e);
+    }
+}
+
+// 执行本地排版预览
+async function triggerPreview() {
+    const mdPath = getSelectedMdPath();
+    const styleTheme = document.getElementById("pygments-style").value;
+    const themeStyle = document.getElementById("theme-style").value;
+    const enableFootnotes = document.getElementById("enable-footnotes").checked;
+    
+    if (!mdPath) {
+        showToast("请先选择 Markdown 文件", "error");
         return;
     }
     
+    const previewBtn = document.getElementById("preview-btn");
+    previewBtn.disabled = true;
+    previewBtn.textContent = "编译中...";
+    appendLog(`开始解析编译 Markdown: ${mdPath} [样式: ${themeStyle}]`, "info");
+    
     try {
-        const res = await fetch("/api/articles/delete", {
+        const response = await fetch("/api/preview", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: path })
+            body: JSON.stringify({
+                md_path: mdPath,
+                style: themeStyle,
+                pygments_style: styleTheme,
+                enable_footnotes: enableFootnotes
+            })
         });
-        const data = await res.json();
+        const data = await response.json();
         if (data.success) {
-            showToast("文章已删除", "info");
-            appendLog(`已删除草稿文件: ${path}`, "info");
-            await loadArticlesCatalog();
-            await loadWorkspaceFiles();
+            renderHtmlInIframe(data.html);
+            appendLog("排版编译成功！CSS 样式及高亮代码已完全行内化注入。", "success");
+            showToast("本地排版渲染成功！", "success");
         } else {
             throw new Error(data.message);
         }
-    } catch (e) {
-        showToast("删除失败: " + e.message, "error");
-        appendLog(`删除失败: ${e.message}`, "error");
+    } catch (error) {
+        showToast("编译失败: " + error.message, "error");
+        appendLog("编译排版失败: " + error.message, "error");
+    } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = "👁️ 编译排版并预览";
     }
-};
+}
 
-// 安全 HTML 转义
+// 工作台单篇同步草稿箱
+async function triggerSync() {
+    const mdPath = getSelectedMdPath();
+    const coverPath = getSelectedCoverPath();
+    const themeStyle = document.getElementById("theme-style").value;
+    const enableFootnotes = document.getElementById("enable-footnotes").checked;
+    
+    if (!mdPath) {
+        showToast("请选择 Markdown 文件", "error");
+        return;
+    }
+    
+    const syncBtn = document.getElementById("sync-btn");
+    syncBtn.disabled = true;
+    syncBtn.textContent = "正在同步微信...";
+    
+    appendLog("触发微信草稿箱同步任务...", "info");
+    
+    const payload = {
+        md_path: mdPath,
+        cover_path: coverPath,
+        title: document.getElementById("article-title").value,
+        author: document.getElementById("author").value,
+        digest: document.getElementById("article-digest").value,
+        style: themeStyle,
+        pygments_style: document.getElementById("pygments-style").value,
+        enable_footnotes: enableFootnotes,
+        content_source_url: document.getElementById("content-source-url").value
+    };
+    
+    try {
+        const response = await fetch("/api/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.status === 403 && data.error_type === "IP_WHITELIST") {
+            appendLog(`❌ 微信 API 报错: 40164 (IP 白名单错误: ${data.ip})`, "error");
+            showToast("同步失败：当前 IP 未加白名单 (" + data.ip + ")", "error");
+        } else if (data.success) {
+            appendLog(`🎉 微信草稿箱同步成功！Media ID: ${data.media_id}`, "success");
+            showToast("已成功同步至微信公众平台草稿箱！", "success");
+            loadArticlesCatalog();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        showToast("微信同步失败: " + error.message, "error");
+        appendLog("微信同步失败: " + error.message, "error");
+    } finally {
+        syncBtn.disabled = false;
+        syncBtn.textContent = "🚀 一键同步草稿箱";
+    }
+}
+
+function getSelectedMdPath() {
+    const manualVal = document.getElementById("md-path-manual").value.trim();
+    const selectVal = document.getElementById("md-file-select").value;
+    return state.activeFileTab === "manual" ? (manualVal || selectVal) : (selectVal || manualVal);
+}
+
+function getSelectedCoverPath() {
+    const manualVal = document.getElementById("cover-path-manual").value.trim();
+    const selectVal = document.getElementById("cover-file-select").value;
+    return state.activeCoverTab === "manual" ? (manualVal || selectVal) : (selectVal || manualVal);
+}
+
+function renderHtmlInIframe(htmlContent) {
+    const iframe = document.getElementById("preview-frame");
+    const placeholder = document.getElementById("preview-placeholder");
+    placeholder.classList.add("hidden");
+    
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+}
+
+function appendLog(message, type = "info") {
+    const container = document.getElementById("console-logs");
+    const line = document.createElement("div");
+    line.className = `log-line ${type}`;
+    const timeStr = new Date().toLocaleTimeString();
+    line.textContent = `[${timeStr}] ${message}`;
+    container.appendChild(line);
+    container.scrollTop = container.scrollHeight;
+}
+
+function clearConsole() {
+    document.getElementById("console-logs").innerHTML = "";
+}
+
+function showToast(message, type = "success") {
+    const toast = document.getElementById("toast");
+    const icon = document.getElementById("toast-icon");
+    const msg = document.getElementById("toast-msg");
+    
+    toast.className = `ant-message ${type}`;
+    if (type === "success") icon.textContent = "✓";
+    else if (type === "error") icon.textContent = "✕";
+    else if (type === "warning") icon.textContent = "⚠";
+    else icon.textContent = "ℹ️";
+    
+    msg.textContent = message;
+    toast.classList.remove("hidden");
+    
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+        toast.classList.add("hidden");
+    }, 2800);
+}
+
 function escapeHtml(str) {
     if (!str) return "";
     return String(str)
@@ -799,128 +972,10 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-// 渲染文章网格列表
-function renderArticlesGrid() {
-    const container = document.getElementById("articles-card-grid");
-    const emptyState = document.getElementById("library-empty");
-    if (!container) return;
-    
-    const filter = state.currentFilter;
-    const keyword = state.searchKeyword;
-    
-    const filtered = state.articles.filter(item => {
-        if (filter !== "all" && item.status !== filter) {
-            return false;
-        }
-        if (keyword) {
-            const titleMatch = (item.title || "").toLowerCase().includes(keyword);
-            const authorMatch = (item.author || "").toLowerCase().includes(keyword);
-            const digestMatch = (item.digest || "").toLowerCase().includes(keyword);
-            const tagsMatch = Array.isArray(item.tags) && item.tags.some(t => String(t).toLowerCase().includes(keyword));
-            if (!titleMatch && !authorMatch && !digestMatch && !tagsMatch) {
-                return false;
-            }
-        }
-        return true;
-    });
-    
-    if (filtered.length === 0) {
-        container.innerHTML = "";
-        if (emptyState) emptyState.classList.remove("hidden");
-        return;
+function setupEventListeners() {
+    // 监听 Markdown 下拉选择变动
+    const mdSelect = document.getElementById("md-file-select");
+    if (mdSelect) {
+        mdSelect.addEventListener("change", (e) => checkMdFrontmatter(e.target.value));
     }
-    
-    if (emptyState) emptyState.classList.add("hidden");
-    
-    const styleDisplayMap = {
-        "default": "优雅茶青",
-        "tech": "深邃科技蓝",
-        "story": "硬核实战橙",
-        "minimal": "极简冷灰",
-        "warm": "暖意秋橙"
-    };
-    
-    let html = "";
-    filtered.forEach(item => {
-        const isSynced = item.status === "synced";
-        const isScheduled = item.status === "scheduled";
-        
-        let statusBadgeClass = "draft";
-        let statusBadgeText = "⏳ 待审核";
-        if (isSynced) {
-            statusBadgeClass = "synced";
-            statusBadgeText = "✓ 已入库";
-        } else if (isScheduled) {
-            statusBadgeClass = "scheduled";
-            statusBadgeText = `📅 ${item.scheduled_date || "已排期"}`;
-        }
-        
-        const styleName = styleDisplayMap[item.style] || item.style || "默认主题";
-        const wordsFormatted = item.word_count ? `${item.word_count.toLocaleString()} 字` : "未计";
-        
-        let coverHtml = "";
-        if (item.cover_url) {
-            coverHtml = `<img src="${item.cover_url}" alt="cover" class="card-cover-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'card-cover-fallback\\\'>📰</div>'">`;
-        } else {
-            coverHtml = `<div class="card-cover-fallback">📰</div>`;
-        }
-        
-        let tagsHtml = "";
-        if (Array.isArray(item.tags) && item.tags.length > 0) {
-            tagsHtml = item.tags.map(t => `<span class="card-tag">#${escapeHtml(t)}</span>`).join("");
-        }
-        
-        let syncedInfoHtml = "";
-        if (isSynced) {
-            const shortMediaId = item.wechat_media_id ? (item.wechat_media_id.length > 20 ? item.wechat_media_id.substring(0, 20) + "..." : item.wechat_media_id) : "草稿已生成";
-            syncedInfoHtml = `
-                <div class="card-synced-info">
-                    <span>草稿ID: <code>${escapeHtml(shortMediaId)}</code></span>
-                    <span>${escapeHtml(item.sync_time || "已同步")}</span>
-                </div>
-            `;
-        }
-        
-        html += `
-            <div class="article-card" data-path="${escapeHtml(item.path)}">
-                <div class="card-cover-container">
-                    ${coverHtml}
-                    <div class="card-status-badge ${statusBadgeClass}">${statusBadgeText}</div>
-                </div>
-                <div class="card-content">
-                    <h4 class="card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</h4>
-                    <p class="card-digest" title="${escapeHtml(item.digest)}">${escapeHtml(item.digest || "暂无摘要")}</p>
-                    <div class="card-meta-row">
-                        <span>👤 ${escapeHtml(item.author || "默认作者")}</span>
-                        <span>·</span>
-                        <span>📝 约 ${wordsFormatted}</span>
-                        <span>·</span>
-                        <span class="card-tag style-tag">🎨 ${escapeHtml(styleName)}</span>
-                        ${tagsHtml}
-                    </div>
-                    ${syncedInfoHtml}
-                    <div class="card-actions">
-                        <div class="schedule-group">
-                            <label>排期:</label>
-                            <input type="date" value="${escapeHtml(item.scheduled_date || "")}" onchange="setArticleSchedule('${escapeHtml(item.path)}', this.value)">
-                        </div>
-                        <div class="card-btn-group">
-                            <button class="card-btn card-preview-btn" onclick="previewFromCatalog('${escapeHtml(item.path)}')" title="调入工作区实时编译预览">
-                                👁️ 预览
-                            </button>
-                            <button class="card-btn card-sync-btn" onclick="syncSingleArticle('${escapeHtml(item.path)}', this)" title="一键推送到微信公众号草稿箱">
-                                ${isSynced ? "🔄 重新入库" : "🚀 一键入库"}
-                            </button>
-                            <button class="card-btn card-delete-btn" onclick="deleteArticle('${escapeHtml(item.path)}')" title="删除草稿">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
 }
-
