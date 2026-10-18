@@ -296,9 +296,9 @@ function renderArticlesTable() {
     if (currentPageItems.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 48px 0;">
-                    <div style="font-size: 24px; margin-bottom: 8px;">📂</div>
-                    <div>暂无符合筛选条件的文章数据</div>
+                <td colspan="8" class="text-center text-slate-400 py-12">
+                    <div class="text-2xl mb-1.5">📂</div>
+                    <div class="text-xs">暂无符合筛选条件的文章数据</div>
                 </td>
             </tr>
         `;
@@ -313,13 +313,16 @@ function renderArticlesTable() {
         const wordCountText = item.word_count ? item.word_count.toLocaleString() : "--";
         
         // 状态徽标与状态文本
-        let badgeDotClass = "draft";
+        let dotClass = "bg-amber-500";
+        let textClass = "text-amber-700";
         let statusLabel = "待审核";
         if (item.status === "synced") {
-            badgeDotClass = "synced";
+            dotClass = "bg-emerald-500";
+            textClass = "text-emerald-700";
             statusLabel = "已入库草稿";
         } else if (item.status === "scheduled") {
-            badgeDotClass = "scheduled";
+            dotClass = "bg-blue-500";
+            textClass = "text-blue-700";
             statusLabel = "已排期";
         }
         
@@ -327,40 +330,42 @@ function renderArticlesTable() {
         const coverImgSrc = item.cover_url || "/api/local-image/assets/cover.png";
         
         html += `
-            <tr class="${isSelected ? 'row-selected' : ''}" data-path="${escapeHtml(item.path)}">
-                <td class="col-selection">
-                    <input type="checkbox" class="ant-checkbox" ${isSelected ? 'checked' : ''} onchange="handleRowSelect('${escapeHtml(item.path)}', this.checked)">
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50/60' : ''}" data-path="${escapeHtml(item.path)}">
+                <td class="w-10 py-2 px-3 text-center">
+                    <input type="checkbox" class="rounded-sm border-slate-300 text-blue-600 focus:ring-0 cursor-pointer" ${isSelected ? 'checked' : ''} onchange="handleRowSelect('${escapeHtml(item.path)}', this.checked)">
                 </td>
-                <td class="col-cover">
-                    <img src="${coverImgSrc}" alt="thumb" class="article-thumb-img" onerror="this.onerror=null;this.src='/ui/static/style.css'">
+                <td class="w-12 py-2 px-2">
+                    <img src="${coverImgSrc}" alt="thumb" class="w-10 h-7 object-cover rounded-sm border border-slate-200" onerror="this.onerror=null;this.src='/ui/static/style.css'">
                 </td>
-                <td class="col-title-main">
-                    <div class="table-article-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
-                    <div class="table-article-digest" title="${escapeHtml(item.digest || '')}">${escapeHtml(item.digest || '暂无摘要描述')}</div>
+                <td class="py-2 px-3">
+                    <div class="font-medium text-slate-900 truncate max-w-xs md:max-w-md" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+                    <div class="text-[11px] text-slate-400 truncate max-w-xs md:max-w-md mt-0.5" title="${escapeHtml(item.digest || '')}">${escapeHtml(item.digest || '暂无摘要描述')}</div>
                 </td>
-                <td>
-                    <span class="ant-tag ant-tag-primary">${escapeHtml(styleText)}</span>
+                <td class="w-28 py-2 px-3">
+                    <span class="inline-block px-1.5 py-0.5 text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-sm">${escapeHtml(styleText)}</span>
                 </td>
-                <td style="text-align: right; font-family: SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--text-regular);">
+                <td class="w-20 py-2 px-3 text-right font-mono text-slate-600 text-xs">
                     ${wordCountText}
                 </td>
-                <td>
-                    <input type="date" class="table-schedule-input" value="${escapeHtml(item.scheduled_date || '')}" onchange="setArticleSchedule('${escapeHtml(item.path)}', this.value)" title="选择发文排期">
+                <td class="w-32 py-2 px-3">
+                    <input type="date" class="h-6 px-1.5 text-[11px] border border-slate-300 rounded-sm text-slate-700 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value="${escapeHtml(item.scheduled_date || '')}" onchange="setArticleSchedule('${escapeHtml(item.path)}', this.value)" title="选择发文排期">
                 </td>
-                <td>
-                    <span class="ant-badge-status">
-                        <span class="ant-badge-dot ${badgeDotClass}"></span>
-                        <span>${statusLabel}</span>
+                <td class="w-24 py-2 px-3">
+                    <span class="inline-flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>
+                        <span class="${textClass} text-xs font-medium">${statusLabel}</span>
                     </span>
                 </td>
-                <td class="col-actions">
-                    <button class="ant-link" onclick="previewFromCatalog('${escapeHtml(item.path)}')">预览</button>
-                    <span class="action-divider">|</span>
-                    <button class="ant-link" onclick="promptSchedule('${escapeHtml(item.path)}', '${escapeHtml(item.scheduled_date || '')}')">排期</button>
-                    <span class="action-divider">|</span>
-                    <button class="ant-link" onclick="syncSingleArticle('${escapeHtml(item.path)}', this)">${item.status === 'synced' ? '重推' : '入库'}</button>
-                    <span class="action-divider">|</span>
-                    <button class="ant-link danger" onclick="deleteArticle('${escapeHtml(item.path)}')">删除</button>
+                <td class="w-40 py-2 px-3 text-center">
+                    <div class="flex items-center justify-center gap-1.5 text-xs">
+                        <button class="text-blue-600 hover:text-blue-800 hover:underline font-medium" onclick="previewFromCatalog('${escapeHtml(item.path)}')">预览</button>
+                        <span class="text-slate-300">|</span>
+                        <button class="text-blue-600 hover:text-blue-800 hover:underline font-medium" onclick="promptSchedule('${escapeHtml(item.path)}', '${escapeHtml(item.scheduled_date || '')}')">排期</button>
+                        <span class="text-slate-300">|</span>
+                        <button class="text-blue-600 hover:text-blue-800 hover:underline font-medium" onclick="syncSingleArticle('${escapeHtml(item.path)}', this)">${item.status === 'synced' ? '重推' : '入库'}</button>
+                        <span class="text-slate-300">|</span>
+                        <button class="text-red-500 hover:text-red-700 hover:underline font-medium" onclick="deleteArticle('${escapeHtml(item.path)}')">删除</button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -401,8 +406,11 @@ function handleRowSelect(path, checked) {
     // 更新当前行背景
     const row = document.querySelector(`tr[data-path="${path}"]`);
     if (row) {
-        if (checked) row.classList.add("row-selected");
-        else row.classList.remove("row-selected");
+        if (checked) {
+            row.classList.add("bg-blue-50/60");
+        } else {
+            row.classList.remove("bg-blue-50/60");
+        }
     }
 }
 
@@ -686,19 +694,22 @@ function switchMainView(viewName) {
     const viewWs = document.getElementById("workspace-view");
     const breadcrumbCurrent = document.getElementById("breadcrumb-current");
     
+    const activeNavClass = "w-full h-9 px-2.5 rounded text-xs font-medium flex items-center gap-2 bg-blue-50 text-blue-700 border-l-2 border-blue-600 transition-colors";
+    const inactiveNavClass = "w-full h-9 px-2.5 rounded text-xs font-medium flex items-center gap-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-2 border-transparent transition-colors";
+    
     if (viewName === "library") {
-        sideLib.classList.add("active");
-        sideWs.classList.remove("active");
-        viewLib.classList.remove("hidden");
-        viewWs.classList.add("hidden");
-        breadcrumbCurrent.textContent = "文章管理与排期";
+        if (sideLib) sideLib.className = activeNavClass;
+        if (sideWs) sideWs.className = inactiveNavClass;
+        if (viewLib) viewLib.classList.remove("hidden");
+        if (viewWs) viewWs.classList.add("hidden");
+        if (breadcrumbCurrent) breadcrumbCurrent.textContent = "文章管理与排期";
         loadArticlesCatalog();
     } else {
-        sideLib.classList.remove("active");
-        sideWs.classList.add("active");
-        viewLib.classList.add("hidden");
-        viewWs.classList.remove("hidden");
-        breadcrumbCurrent.textContent = "极速排版与创作";
+        if (sideLib) sideLib.className = inactiveNavClass;
+        if (sideWs) sideWs.className = activeNavClass;
+        if (viewLib) viewLib.classList.add("hidden");
+        if (viewWs) viewWs.classList.remove("hidden");
+        if (breadcrumbCurrent) breadcrumbCurrent.textContent = "极速排版与创作";
     }
 }
 
@@ -715,18 +726,22 @@ function switchFileTab(tab) {
     state.activeFileTab = tab;
     const wsTab = document.getElementById("workspace-tab");
     const mnTab = document.getElementById("manual-tab");
-    const btns = document.querySelectorAll(".form-item-compact .tab-selector-bar")[0].querySelectorAll(".tab-selector-btn");
+    const btnWs = document.getElementById("tab-btn-file-ws");
+    const btnMn = document.getElementById("tab-btn-file-manual");
+    
+    const activeTabClass = "tab-selector-btn text-blue-600 border-b-2 border-blue-600 font-medium px-1.5 py-0.5";
+    const inactiveTabClass = "tab-selector-btn text-slate-500 hover:text-slate-800 px-1.5 py-0.5";
     
     if (tab === "workspace") {
-        btns[0].classList.add("active");
-        btns[1].classList.remove("active");
-        wsTab.classList.remove("hidden");
-        mnTab.classList.add("hidden");
+        if (btnWs) btnWs.className = activeTabClass;
+        if (btnMn) btnMn.className = inactiveTabClass;
+        if (wsTab) wsTab.classList.remove("hidden");
+        if (mnTab) mnTab.classList.add("hidden");
     } else {
-        btns[0].classList.remove("active");
-        btns[1].classList.add("active");
-        wsTab.classList.add("hidden");
-        mnTab.classList.remove("hidden");
+        if (btnWs) btnWs.className = inactiveTabClass;
+        if (btnMn) btnMn.className = activeTabClass;
+        if (wsTab) wsTab.classList.add("hidden");
+        if (mnTab) mnTab.classList.remove("hidden");
     }
 }
 
@@ -734,18 +749,22 @@ function switchCoverTab(tab) {
     state.activeCoverTab = tab;
     const wsTab = document.getElementById("cover-workspace-tab");
     const mnTab = document.getElementById("cover-manual-tab");
-    const btns = document.querySelectorAll(".form-item-compact .tab-selector-bar")[1].querySelectorAll(".tab-selector-btn");
+    const btnWs = document.getElementById("tab-btn-cover-ws");
+    const btnMn = document.getElementById("tab-btn-cover-manual");
+    
+    const activeTabClass = "tab-selector-btn text-blue-600 border-b-2 border-blue-600 font-medium px-1.5 py-0.5";
+    const inactiveTabClass = "tab-selector-btn text-slate-500 hover:text-slate-800 px-1.5 py-0.5";
     
     if (tab === "workspace") {
-        btns[0].classList.add("active");
-        btns[1].classList.remove("active");
-        wsTab.classList.remove("hidden");
-        mnTab.classList.add("hidden");
+        if (btnWs) btnWs.className = activeTabClass;
+        if (btnMn) btnMn.className = inactiveTabClass;
+        if (wsTab) wsTab.classList.remove("hidden");
+        if (mnTab) mnTab.classList.add("hidden");
     } else {
-        btns[0].classList.remove("active");
-        btns[1].classList.add("active");
-        wsTab.classList.add("hidden");
-        mnTab.classList.remove("hidden");
+        if (btnWs) btnWs.className = inactiveTabClass;
+        if (btnMn) btnMn.className = activeTabClass;
+        if (wsTab) wsTab.classList.add("hidden");
+        if (mnTab) mnTab.classList.remove("hidden");
     }
 }
 
@@ -930,8 +949,15 @@ function renderHtmlInIframe(htmlContent) {
 
 function appendLog(message, type = "info") {
     const container = document.getElementById("console-logs");
+    if (!container) return;
     const line = document.createElement("div");
-    line.className = `log-line ${type}`;
+    let colorClass = "text-slate-300";
+    if (type === "success") colorClass = "text-emerald-400 font-medium";
+    else if (type === "error") colorClass = "text-red-400 font-medium";
+    else if (type === "warning") colorClass = "text-amber-400 font-medium";
+    else if (type === "info") colorClass = "text-blue-400";
+    
+    line.className = `leading-tight ${colorClass}`;
     const timeStr = new Date().toLocaleTimeString();
     line.textContent = `[${timeStr}] ${message}`;
     container.appendChild(line);
@@ -946,14 +972,34 @@ function showToast(message, type = "success") {
     const toast = document.getElementById("toast");
     const icon = document.getElementById("toast-icon");
     const msg = document.getElementById("toast-msg");
+    if (!toast) return;
     
-    toast.className = `ant-message ${type}`;
-    if (type === "success") icon.textContent = "✓";
-    else if (type === "error") icon.textContent = "✕";
-    else if (type === "warning") icon.textContent = "⚠";
-    else icon.textContent = "ℹ️";
+    let iconChar = "✓";
+    let iconColor = "text-emerald-600";
+    let borderClass = "border-slate-200";
     
+    if (type === "success") {
+        iconChar = "✓";
+        iconColor = "text-emerald-600";
+        borderClass = "border-emerald-300";
+    } else if (type === "error") {
+        iconChar = "✕";
+        iconColor = "text-red-500";
+        borderClass = "border-red-300";
+    } else if (type === "warning") {
+        iconChar = "⚠";
+        iconColor = "text-amber-500";
+        borderClass = "border-amber-300";
+    } else {
+        iconChar = "ℹ️";
+        iconColor = "text-blue-500";
+        borderClass = "border-blue-300";
+    }
+    
+    icon.textContent = iconChar;
+    icon.className = `text-sm font-bold ${iconColor}`;
     msg.textContent = message;
+    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 bg-white border ${borderClass} rounded shadow-md px-3.5 py-2 text-xs flex items-center gap-2 z-50 transition-all`;
     toast.classList.remove("hidden");
     
     clearTimeout(toast._timer);
