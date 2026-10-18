@@ -92,38 +92,50 @@
                     <section class="section-card file-selector-card">
                         <h3><span class="icon">📄</span>选择 Markdown 文件</h3>
                         <div class="tab-header">
-                            <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区文件</button>
-                            <button class="tab-btn" onclick="switchFileTab('manual')">手动输入路径</button>
+                            <button class="tab-btn active" onclick="switchFileTab('workspace')">工作区下拉选择</button>
+                            <button class="tab-btn" onclick="switchFileTab('manual')">选择电脑本地文件 / 绝对路径</button>
                         </div>
                         
                         <div class="tab-content" id="workspace-tab">
-                            <div class="select-wrapper">
-                                <select id="md-file-select" class="custom-select">
-                                    <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
-                                </select>
+                            <div class="input-with-btn">
+                                <div class="select-wrapper" style="flex: 1;">
+                                    <select id="md-file-select" class="custom-select">
+                                        <option value="">-- 请选择工作区内的 Markdown 文件 --</option>
+                                    </select>
+                                </div>
+                                <button class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
                             </div>
                         </div>
                         <div class="tab-content hidden" id="manual-tab">
-                            <input type="text" id="md-path-manual" class="full-width-input" placeholder="例如: E:/auto-gzh/test.md">
+                            <div class="input-with-btn">
+                                <input type="text" id="md-path-manual" class="full-width-input" placeholder="请选择或直接输入 Markdown 文件绝对路径 (如 C:/Docs/my_article.md)">
+                                <button id="browse-md-btn" class="browse-btn" type="button" onclick="browseFile('md')">📁 浏览电脑文件...</button>
+                            </div>
                         </div>
                     </section>
 
                     <section class="section-card file-selector-card">
                         <h3><span class="icon">🖼️</span>选择封面图片</h3>
                         <div class="tab-header">
-                            <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区图片</button>
-                            <button class="tab-btn" onclick="switchCoverTab('manual')">手动输入路径</button>
+                            <button class="tab-btn active" onclick="switchCoverTab('workspace')">工作区下拉选择</button>
+                            <button class="tab-btn" onclick="switchCoverTab('manual')">选择电脑本地文件 / 绝对路径</button>
                         </div>
                         
                         <div class="tab-content" id="cover-workspace-tab">
-                            <div class="select-wrapper">
-                                <select id="cover-file-select" class="custom-select">
-                                    <option value="">-- 请选择工作区内的封面图片 --</option>
-                                </select>
+                            <div class="input-with-btn">
+                                <div class="select-wrapper" style="flex: 1;">
+                                    <select id="cover-file-select" class="custom-select">
+                                        <option value="">-- 请选择工作区内的封面图片 --</option>
+                                    </select>
+                                </div>
+                                <button class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
                             </div>
                         </div>
                         <div class="tab-content hidden" id="cover-manual-tab">
-                            <input type="text" id="cover-path-manual" class="full-width-input" placeholder="例如: E:/auto-gzh/cover.png">
+                            <div class="input-with-btn">
+                                <input type="text" id="cover-path-manual" class="full-width-input" placeholder="请选择或直接输入封面图片绝对路径 (如 C:/Pictures/cover.png)">
+                                <button id="browse-cover-btn" class="browse-btn" type="button" onclick="browseFile('image')">🖼️ 浏览电脑文件...</button>
+                            </div>
                         </div>
                     </section>
 

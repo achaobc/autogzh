@@ -156,14 +156,14 @@ async function triggerPreview() {
             })
         });
         
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
         
         if (data.success) {
             renderHtmlInIframe(data.html);
             appendLog("排版编译成功！CSS 样式及高亮代码已完全行内化注入，已加载到预览视口中。", "success");
             showToast("本地编译预览成功！", "success");
         } else {
-            throw new Error(data.message);
+            throw new Error(data.message || "编译未知错误");
         }
     } catch (error) {
         showToast("编译失败：" + error.message, "error");
@@ -307,21 +307,64 @@ window.togglePasswordVisibility = function(id) {
     }
 };
 
+// 打开系统原生文件选择对话框
+window.browseFile = async function(fileType) {
+    const isMd = fileType === 'md';
+    const manualInput = isMd ? document.getElementById("md-path-manual") : document.getElementById("cover-path-manual");
+    
+    appendLog(`正为您拉起 Windows 原生文件选择对话框...`, "info");
+    
+    try {
+        const response = await fetch("/api/select-file", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file_type: fileType })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.file_path) {
+            manualInput.value = data.file_path;
+            
+            // 自动切换到“选择电脑本地文件 / 绝对路径”选项卡并高亮展示
+            if (isMd) {
+                switchFileTab('manual');
+            } else {
+                switchCoverTab('manual');
+            }
+            
+            appendLog(`成功选择本地文件: '${data.file_path}'`, "success");
+            showToast("已导入所选文件路径！", "success");
+        } else if (data.cancelled) {
+            appendLog("已取消文件选择。", "info");
+        } else {
+            throw new Error(data.message || "文件选择失败");
+        }
+    } catch (error) {
+        showToast("选择文件失败: " + error.message, "error");
+        appendLog("打开文件选择窗口异常: " + error.message, "error");
+    }
+};
+
 // 获取最终选定的文件路径
 function getSelectedMdPath() {
-    if (state.activeFileTab === "workspace") {
-        return document.getElementById("md-file-select").value;
-    } else {
-        return document.getElementById("md-path-manual").value.stripOrEmpty();
+    const manualVal = document.getElementById("md-path-manual").value.stripOrEmpty();
+    const selectVal = document.getElementById("md-file-select").value;
+    
+    if (state.activeFileTab === "manual") {
+        return manualVal || selectVal;
     }
+    return selectVal || manualVal;
 }
 
 function getSelectedCoverPath() {
-    if (state.activeCoverTab === "workspace") {
-        return document.getElementById("cover-file-select").value;
-    } else {
-        return document.getElementById("cover-path-manual").value.stripOrEmpty();
+    const manualVal = document.getElementById("cover-path-manual").value.stripOrEmpty();
+    const selectVal = document.getElementById("cover-file-select").value;
+    
+    if (state.activeCoverTab === "manual") {
+        return manualVal || selectVal;
     }
+    return selectVal || manualVal;
 }
 
 String.prototype.stripOrEmpty = function() {
@@ -392,4 +435,14 @@ function renderIpWhitelistWarning(ip) {
     
     logsContainer.appendChild(card);
     logsContainer.scrollTop = logsContainer.scrollHeight;
+}
+
+// 统一 JSON 解析防御辅助函数
+async function parseJsonResponse(response) {
+    const text = await response.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        throw new Error(`服务端异常 [HTTP ${response.status}]`);
+    }
 }

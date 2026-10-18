@@ -1,8 +1,7 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 .pytest_cache/
 .coverage
 htmlcov/
@@ -14,11 +13,24 @@ env/
 venv/
 ENV/
 
-# Configuration (Sensitive info)
+# Configuration (Sensitive info - DO NOT COMMIT)
 config.yaml
 
 # WeChat Token cache
 .wechat_token.json
 
-# Local output / test files
-output_test.html
+# PyInstaller & Build artifacts
+build/
+dist/
+*.spec
+
+# Articles generation output
+articles/output/
+*.html
+
+# IDE & OS
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db

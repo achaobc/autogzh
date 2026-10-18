@@ -293,6 +293,42 @@ input:checked + .slider:before {
     background-color: #4b5563;
 }
 
+/* 输入框与浏览按钮组合布局 */
+.input-with-btn {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+.input-with-btn input {
+    flex: 1;
+}
+
+.browse-btn {
+    width: auto;
+    white-space: nowrap;
+    padding: 10px 14px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--accent-teal);
+    color: var(--accent-teal);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.browse-btn:hover {
+    background-color: var(--accent-teal);
+    color: var(--text-primary);
+    box-shadow: 0 0 10px var(--accent-teal-glow);
+}
+
 /* 侧边栏页脚 */
 .sidebar-footer {
     margin-top: auto;

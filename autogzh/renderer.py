@@ -9,23 +9,69 @@ from premailer import transform
 
 logger = logging.getLogger(__name__)
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
+def extract_title_from_md(md_path):
+    """尝试从 Markdown 内容中提取第一个一级标题作为文章标题"""
+    try:
+        with open(md_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    # 过滤可能存在的一些 markdown 加粗等简单标记
+                    title = re.sub(r'[*_`]', '', title)
+                    return title
+    except Exception as e:
+        logger.warning(f"读取 Markdown 提取标题失败: {e}")
+    
+    # 兜底：使用文件名（去除扩展名）
+    basename = os.path.basename(md_path)
+    title, _ = os.path.splitext(basename)
+    return title
+
+def extract_digest_from_html(html_content, max_bytes=120):
+    """从生成的 HTML 中剥离文本并按字节截取作为摘要，微信限制摘要最多 120 字节"""
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+        # 移除代码块，避免代码混入摘要中影响观感
+        for pre in soup.find_all("pre"):
+            pre.decompose()
+        for code in soup.find_all("code"):
+            code.decompose()
+            
+        text = soup.get_text()
+        # 清理连续空格、制表符和换行
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        encoded = text.encode('utf-8')
+        if len(encoded) <= max_bytes:
+            return text
+            
+        # 截断时留出 3 字节给省略号 "..."
+        target_bytes = max_bytes - 3
+        truncated_encoded = encoded[:target_bytes]
+        truncated_text = truncated_encoded.decode('utf-8', errors='ignore')
+        return truncated_text + "..."
+    except Exception as e:
+        logger.warning(f"生成自动摘要失败: {e}")
+        return "点击阅读全文"
+
 class MarkdownRenderer:
     """Markdown 解析、样式行内化、以及本地图片提取与替换服务"""
     
     def __init__(self, css_path=None, pygments_style="monokai"):
         """
-        :param css_path: 外部样式表路径，若为 None 则查找当前目录 styles/default.css
+        :param css_path: 外部样式表路径，若为 None 则查找 styles/default.css
         :param pygments_style: Pygments 代码高亮主题名称 (如 monokai, default, github)
         """
         self.pygments_style = pygments_style
         
-        # 查找默认 CSS 文件路径
         if css_path is None:
-            # 默认为当前脚本同级目录下的 styles/default.css
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.css_path = os.path.join(current_dir, "styles", "default.css")
+            self.css_path = os.path.join(PROJECT_ROOT, "styles", "default.css")
         else:
-            self.css_path = css_path
+            self.css_path = css_path if os.path.isabs(css_path) else os.path.join(PROJECT_ROOT, css_path)
 
     def _load_css(self):
         """读取 CSS 文件，并追加 Pygments 生成的高亮样式"""
@@ -43,7 +89,6 @@ class MarkdownRenderer:
         # 生成 Pygments 代码高亮 CSS
         try:
             formatter = HtmlFormatter(style=self.pygments_style)
-            # 生成适用于 .codehilite 容器的代码样式
             pygments_css = formatter.get_style_defs(".codehilite")
             css_content += "\n/* Pygments Highlighting Style */\n" + pygments_css
             logger.info(f"生成 Pygments 代码高亮样式 (主题: {self.pygments_style})")
@@ -57,7 +102,6 @@ class MarkdownRenderer:
         """判断图片路径是否为本地路径"""
         if not src:
             return False
-        # 排除网络图片及 Base64 编码图片
         parsed = urlparse(src)
         if parsed.scheme in ('http', 'https') or src.startswith('data:'):
             return False
@@ -69,10 +113,6 @@ class MarkdownRenderer:
         1. 读取并解析 Markdown
         2. 应用 CSS 样式，并将其行内化
         3. 解析所有图片，如果是本地路径则上传至微信，并替换为微信 CDN URL
-        
-        :param md_path: Markdown 文件的本地路径
-        :param client: WeChatClient 实例
-        :return: 适用于微信草稿箱的 HTML 字符串 (行内样式)
         """
         if not os.path.exists(md_path):
             raise FileNotFoundError(f"未找到 Markdown 文件: {md_path}")
@@ -84,7 +124,6 @@ class MarkdownRenderer:
             md_content = f.read()
 
         # 2. Markdown 转换为 HTML
-        # 启用 fenced_code (代码块), tables (表格), toc (目录), codehilite (代码高亮) 扩展
         extensions = [
             'markdown.extensions.fenced_code',
             'markdown.extensions.tables',
@@ -126,7 +165,6 @@ class MarkdownRenderer:
         # 4. 使用 premailer 将 CSS 样式属性注入到各标签中
         logger.info("正在执行 CSS 样式自动行内化 (Inlining)...")
         try:
-            # cssutils_logging_level 设置为 logging.ERROR 避免打印大量不必要的 CSS 语法警告
             inlined_html = transform(
                 full_html, 
                 include_star_selectors=True,
@@ -138,41 +176,35 @@ class MarkdownRenderer:
         # 5. 用 BeautifulSoup 解析，处理并上传本地图片，提取最终所需的 body 内容
         soup = BeautifulSoup(inlined_html, "html.parser")
         
-        # 微信公众号只接收 body 内的实际内容
         content_div = soup.find("div", class_="markdown-body")
         if not content_div:
-            # 容错：如果找不到 div，取整个 body 内部
             content_div = soup.body if soup.body else soup
             
-        # 查找所有图片标签
         images = content_div.find_all("img")
         logger.info(f"解析到正文共包含 {len(images)} 张图片")
         
         for img in images:
             src = img.get("src")
             if self.is_local_image(src):
-                # 拼接本地图片的绝对路径
-                # 支持相对路径如 images/test.png -> /path/to/markdown/images/test.png
                 local_img_path = os.path.normpath(os.path.join(md_dir, src))
                 
+                # 若直接相对路径找不到，尝试在 assets/ 目录下查找
                 if not os.path.exists(local_img_path):
-                    # 如果找不到图片，打印警告，且为了草稿健壮性可以选择抛出异常或跳过
-                    # 这里抛出异常，防止用户排版完发布才发现图丢了
+                    alt_path = os.path.normpath(os.path.join(PROJECT_ROOT, "assets", src))
+                    if os.path.exists(alt_path):
+                        local_img_path = alt_path
+
+                if not os.path.exists(local_img_path):
                     raise FileNotFoundError(
                         f"正文中的本地图片未找到: '{src}' (解析为: {local_img_path})，请检查路径是否正确。"
                     )
                 
                 try:
-                    # 上传至微信服务器获取 CDN URL
                     cdn_url = client.upload_body_image(local_img_path)
                     img["src"] = cdn_url
                     
-                    # 额外处理微信图片的展示属性
-                    # 微信建议图片宽度自适应，去除可能硬编码的 width/height 样式，以确保移动端排版美观
                     if img.get("style"):
-                        # 如果 style 里有 width/height，建议保留 max-width: 100% 即可
                         style_str = img["style"]
-                        # 确保有 max-width: 100%; display: block; margin: 1.8em auto;
                         if "max-width" not in style_str:
                             img["style"] = style_str + "; max-width: 100%; display: block; margin: 1.8em auto;"
                     else:
@@ -183,12 +215,7 @@ class MarkdownRenderer:
             else:
                 logger.info(f"外部图片或在线链接，保持原样: {src}")
 
-        # 微信编辑器中为了兼容和防过滤，一般最好把 div.markdown-body 本身的样式也内联
-        # 我们返回 div 容器的外部 HTML (包含包裹它的 div 标签及其 style 属性)
-        # 微信公众号后台不支持完整的 html/head 结构，必须是干净的 html 片段
         final_html = str(content_div)
-        
-        # 微信公众号平台不支持 HTML 注释，清除可能存在的注释
         final_html = re.sub(r'<!--.*?-->', '', final_html, flags=re.DOTALL)
         
         logger.info("Markdown 解析与样式处理完毕。")

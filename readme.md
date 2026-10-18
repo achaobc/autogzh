@@ -102,7 +102,7 @@ python main.py --ui
 #### 🐚 【方式 B】终端命令行直接同步
 如果你倾向于在 Shell 中操作，可以直接使用 CLI 模式：
 ```bash
-python main.py --md test.md --cover cover.png
+python main.py --md articles/drafts/test.md --cover assets/cover.png
 ```
 
 ---
@@ -111,7 +111,8 @@ python main.py --md test.md --cover cover.png
 
 | 选项 (长/短) | 说明 | 默认值 |
 | :--- | :--- | :--- |
-| `--ui` | **启动图形化 Web UI 界面模式**（此模式下无需传 md 与 cover 参数） | - |
+| `--gui` | **启动原生桌面窗口客户端模式** (默认双击运行模式) | - |
+| `--ui` | **启动图形化 Web UI 界面模式**（在浏览器打开操作台） | - |
 | `-m, --md` | 本地 Markdown 文件路径 (命令行模式下必填) | - |
 | `-c, --cover` | 封面图片路径 (本地图片，命令行模式下必填) | - |
 | `-t, --title` | 图文标题（未指定则自动提取 Markdown 首个 `# H1`，或使用文件名） | - |
@@ -128,9 +129,28 @@ python main.py --md test.md --cover cover.png
 
 在正式发布至微信前，你可以运行测试脚本确认本地 HTML 转换效果（无需调用微信接口）：
 ```bash
-python test_render.py
+python scripts/test_render.py
 ```
-这将在本地生成一个 [output_test.html](file:///e:/auto-gzh/output_test.html)。右键使用浏览器打开即可查验样式行内化（Inline CSS）及代码高亮是否正确生成。
+脚本将解析 `articles/drafts/test.md`，并在本地生成 `articles/output/output_test.html`。双击或使用浏览器打开即可查验样式行内化（Inline CSS）及代码高亮是否正确生成。
+
+---
+
+## 📁 目录规范架构
+
+```text
+auto-gzh/
+├── autogzh/             # 核心系统库 (客户端、排版渲染器、Web 服务、GUI 容器)
+├── ui/                  # Web UI 控制台前端资源 (static/ & templates/)
+├── styles/              # 排版 CSS 样式表 (default.css)
+├── articles/            # 创作专区 (与系统代码彻底隔离)
+│   ├── drafts/          # Markdown 原稿
+│   ├── output/          # 排版生成的本地 HTML (Git 忽略)
+│   └── templates/       # 模板与文案样例
+├── assets/              # 静态资源 (应用图标 app.ico、默认封面 cover.png 等)
+├── scripts/             # 工具脚本 (打包 build_exe.py、本地测试 test_render.py 等)
+├── main.py              # 统一启动入口
+└── requirements.txt     # 依赖声明
+```
 
 ---
 

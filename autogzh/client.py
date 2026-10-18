@@ -8,6 +8,9 @@ import requests
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
 class WeChatAPIError(Exception):
     """微信 API 调用异常基类"""
     def __init__(self, errcode, errmsg):
@@ -20,13 +23,11 @@ class WeChatIPWhitelistError(WeChatAPIError):
     def __init__(self, errcode, errmsg):
         super().__init__(errcode, errmsg)
         # 尝试从错误信息中提取当前 IP
-        # 典型微信报错信息: "invalid ip 180.110.12.34, not in whitelist" 或 "invalid ip 111.111.111.111 ipv6 ::1, not in whitelist"
         self.ip = "未知"
         ip_match = re.search(r'invalid ip ([\d\.]+)', errmsg)
         if ip_match:
             self.ip = ip_match.group(1)
         elif "ip" in errmsg:
-            # 备用匹配逻辑
             ips = re.findall(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', errmsg)
             if ips:
                 self.ip = ips[0]
@@ -55,7 +56,13 @@ class WeChatClient:
             raise ValueError("初始化失败: AppID 和 AppSecret 不能为空，请检查配置文件")
         self.appid = appid
         self.secret = secret
-        self.token_cache_path = token_cache_path
+        
+        # 统一将 token 缓存路径解析至项目根目录
+        if not os.path.isabs(token_cache_path):
+            self.token_cache_path = os.path.join(PROJECT_ROOT, token_cache_path)
+        else:
+            self.token_cache_path = token_cache_path
+            
         self._access_token = None
         self._token_expires_at = 0
 
@@ -71,12 +78,10 @@ class WeChatClient:
         return response_data
 
     def get_access_token(self):
-        """
-        获取 Access Token，优先读取本地缓存，过期自动刷新
-        """
-        # 1. 检查内存缓存
+        """获取 Access Token，优先读取本地缓存，过期自动刷新"""
         now = time.time()
-        if self._access_token and now < self._token_expires_at - 300: # 提前 5 分钟刷新
+        # 1. 检查内存缓存
+        if self._access_token and now < self._token_expires_at - 300:
             return self._access_token
 
         # 2. 检查本地 JSON 文件缓存
@@ -84,7 +89,6 @@ class WeChatClient:
             try:
                 with open(self.token_cache_path, "r", encoding="utf-8") as f:
                     cache = json.load(f)
-                    # 确保格式正确且未过期
                     if cache.get("appid") == self.appid and cache.get("expires_at", 0) - 300 > now:
                         self._access_token = cache.get("access_token")
                         self._token_expires_at = cache.get("expires_at")
@@ -109,13 +113,11 @@ class WeChatClient:
             self._handle_response(data)
             
             access_token = data["access_token"]
-            expires_in = data["expires_in"] # 默认 7200 秒
+            expires_in = data["expires_in"]
             
-            # 保存到内存
             self._access_token = access_token
             self._token_expires_at = now + expires_in
             
-            # 写入本地缓存文件
             cache_data = {
                 "appid": self.appid,
                 "access_token": access_token,
@@ -131,12 +133,7 @@ class WeChatClient:
             raise RuntimeError(f"请求微信 Access Token 失败: 网络异常 {e}")
 
     def upload_body_image(self, image_path):
-        """
-        上传图文内图片 (正文插图)
-        接口：POST https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token=ACCESS_TOKEN
-        格式：multipart/form-data
-        返回：微信 CDN 图片 URL (例如：http://mmbiz.qpic.cn/...)
-        """
+        """上传图文内图片 (正文插图) 到微信 CDN"""
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"正文图片文件不存在: {image_path}")
 
@@ -146,7 +143,6 @@ class WeChatClient:
         filename = os.path.basename(image_path)
         logger.info(f"正在上传正文图片到微信 CDN: {filename}...")
         
-        # 根据后缀简单判断 Content-Type
         content_type = "image/png"
         if filename.lower().endswith(('.jpg', '.jpeg')):
             content_type = "image/jpeg"
@@ -170,12 +166,7 @@ class WeChatClient:
             raise RuntimeError(f"上传正文图片失败: 网络异常 {e}")
 
     def upload_cover_image(self, image_path):
-        """
-        新增永久图片素材 (通常用于封面图)
-        接口：POST https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=ACCESS_TOKEN&type=image
-        格式：multipart/form-data
-        返回：{"media_id": MEDIA_ID, "url": URL}
-        """
+        """新增永久图片素材 (作为封面图)"""
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"封面图片文件不存在: {image_path}")
 
@@ -209,10 +200,7 @@ class WeChatClient:
 
     def create_draft(self, title, content, thumb_media_id, author=None, digest=None, 
                      content_source_url=None, need_open_comment=0, only_less_tags=0):
-        """
-        新建草稿箱草稿
-        接口：POST https://api.weixin.qq.com/cgi-bin/draft/add?access_token=ACCESS_TOKEN
-        """
+        """新建草稿箱草稿"""
         token = self.get_access_token()
         url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={token}"
         
@@ -237,9 +225,7 @@ class WeChatClient:
         
         logger.info(f"正在新建草稿箱草稿，标题:「{title}」...")
         try:
-            # 微信 API 要求正文使用 UTF-8 编码，且必须为 JSON 格式
             headers = {"Content-Type": "application/json; charset=utf-8"}
-            # 使用 json.dumps 并禁用 ascii 确保中文以 UTF-8 传输而不会变成 Unicode 逃逸字符
             payload_json = json.dumps(payload, ensure_ascii=False).encode('utf-8')
             
             res = requests.post(url, data=payload_json, headers=headers, timeout=20)
