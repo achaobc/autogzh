@@ -648,14 +648,25 @@ def api_post_sync():
             "message": f"同步失败，发生系统异常: {str(e)}"
         }), 500
 
-def start_server(port=5000, open_browser=True):
+def start_server(port=None, open_browser=True):
     """启动 Flask 服务"""
+    import socket
+    if port is None:
+        for p in (5000, 5001, 5002, 5003, 5004, 5005):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                if s.connect_ex(('127.0.0.1', p)) != 0:
+                    port = p
+                    break
+        if port is None:
+            port = 5000
+
     if open_browser:
         import threading
+        target_port = port
         def open_url():
             import time
-            time.sleep(1.0)
-            webbrowser.open(f"http://127.0.0.1:{port}")
+            time.sleep(0.8)
+            webbrowser.open(f"http://127.0.0.1:{target_port}")
         threading.Thread(target=open_url, daemon=True).start()
         
     logger.info(f"正在启动本地 Web 服务，访问地址: http://127.0.0.1:{port}")

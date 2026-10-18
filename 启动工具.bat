@@ -18,49 +18,20 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo 请选择运行模式：
-echo ----------------------------------------------------------------------
-echo  [1] 启动原生桌面应用 (GUI 窗口模式 - 推荐，直接双击使用)
-echo  [2] 启动浏览器控制台 (Web UI 模式，在默认浏览器中打开操作台)
-echo  [3] 快速排版离线预览 (无需 API 凭证，测试渲染并在浏览器查看效果)
-echo  [4] 安装 / 更新运行依赖 (pip install -r requirements.txt)
-echo ----------------------------------------------------------------------
+echo 正在一键启动 Web 管理后台与排期系统...
+echo 稍后将自动在您的默认浏览器中打开操作台 (http://127.0.0.1:5000)
+echo.
+echo [提示] 保持此窗口开启即可保持后台服务运行；若要关闭后台，关闭此窗口即可。
 echo.
 
-set "choice="
-set /p choice="请输入数字选项 [直接按回车默认启动 1]: "
-
-if "%choice%"=="" set choice=1
-
-if "%choice%"=="1" (
-    echo.
-    echo 正在拉起原生 GUI 桌面应用客户端...
-    python main.py --gui
-) else if "%choice%"=="2" (
-    echo.
-    echo 正在启动 Web 服务，稍后将自动在默认浏览器中为您打开操作台...
-    python main.py --ui
-) else if "%choice%"=="3" (
-    echo.
-    echo 正在执行本地排版编译测试 (采用新版硬核实战橙主题)...
-    python scripts/test_render.py articles/drafts/test.md story
-) else if "%choice%"=="4" (
-    echo.
-    echo 正在安装/更新项目依赖库，请稍候...
-    pip install -r requirements.txt
-    echo.
-    echo 依赖安装完成！
-    pause
-) else (
-    echo.
-    echo 正在启动桌面客户端...
-    python main.py --gui
-)
+python main.py --ui
 
 if errorlevel 1 (
     echo.
-    echo [提示] 程序异常退出或发生错误。
-    echo 如果缺少第三方依赖库，可重新运行此批处理文件并选择 [4] 安装依赖。
+    echo [提示] 启动失败，尝试自动安装或更新依赖...
+    pip install -r requirements.txt
     echo.
+    echo 正在重新启动...
+    python main.py --ui
     pause
 )

@@ -6,7 +6,7 @@ const state = {
     selectedCoverPath: "",
     activeFileTab: "workspace", // workspace | manual
     activeCoverTab: "workspace",  // workspace | manual
-    activeView: "workspace", // workspace | library
+    activeView: "library", // workspace | library
     articles: [],
     currentFilter: "all",
     searchKeyword: "",
@@ -574,19 +574,25 @@ window.switchMainView = function(viewName) {
     state.activeView = viewName;
     const wsBtn = document.getElementById("nav-btn-workspace");
     const libBtn = document.getElementById("nav-btn-library");
+    const sideWsBtn = document.getElementById("side-nav-workspace");
+    const sideLibBtn = document.getElementById("side-nav-library");
     const wsView = document.getElementById("workspace-view");
     const libView = document.getElementById("library-view");
 
     if (viewName === "workspace") {
-        wsBtn.classList.add("active");
-        libBtn.classList.remove("active");
-        wsView.classList.remove("hidden");
-        libView.classList.add("hidden");
+        if (wsBtn) wsBtn.classList.add("active");
+        if (libBtn) libBtn.classList.remove("active");
+        if (sideWsBtn) sideWsBtn.classList.add("active");
+        if (sideLibBtn) sideLibBtn.classList.remove("active");
+        if (wsView) wsView.classList.remove("hidden");
+        if (libView) libView.classList.add("hidden");
     } else {
-        wsBtn.classList.remove("active");
-        libBtn.classList.add("active");
-        wsView.classList.add("hidden");
-        libView.classList.remove("hidden");
+        if (wsBtn) wsBtn.classList.remove("active");
+        if (libBtn) libBtn.classList.add("active");
+        if (sideWsBtn) sideWsBtn.classList.remove("active");
+        if (sideLibBtn) sideLibBtn.classList.add("active");
+        if (wsView) wsView.classList.add("hidden");
+        if (libView) libView.classList.remove("hidden");
         loadArticlesCatalog();
     }
 };
@@ -601,9 +607,12 @@ async function loadArticlesCatalog() {
         state.articles = data.articles || [];
         state.stats = data.stats || { total: 0, draft: 0, scheduled: 0, synced: 0 };
         
-        // 更新顶栏与药丸计数
+        // 更新顶栏与侧边栏计数
         const badge = document.getElementById("library-total-badge");
         if (badge) badge.textContent = state.stats.total;
+        
+        const sideBadge = document.getElementById("side-library-badge");
+        if (sideBadge) sideBadge.textContent = state.stats.total;
         
         const countAll = document.getElementById("count-all");
         if (countAll) countAll.textContent = state.stats.total;

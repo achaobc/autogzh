@@ -103,6 +103,60 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
+/* 侧边栏主导航 */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.side-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 550;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.side-nav-item:hover {
+    background: #283548;
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+.side-nav-item.active {
+    background: var(--accent-teal);
+    border-color: var(--accent-teal);
+    color: #ffffff;
+    box-shadow: 0 0 10px var(--accent-teal-glow);
+}
+
+.side-nav-item .nav-icon {
+    font-size: 1.05rem;
+}
+
+.side-nav-item .nav-label {
+    flex: 1;
+}
+
+.side-nav-item .nav-badge {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
 /* 侧边栏设置块 */
 .section-card {
     background-color: var(--bg-card);

@@ -22,6 +22,19 @@
                 <h2>WeChat Sync</h2>
             </div>
             
+            <!-- 侧边栏主导航 -->
+            <nav class="sidebar-nav">
+                <button id="side-nav-library" class="side-nav-item active" onclick="switchMainView('library')">
+                    <span class="nav-icon">📚</span>
+                    <span class="nav-label">文章管理与排期库</span>
+                    <span id="side-library-badge" class="nav-badge">0</span>
+                </button>
+                <button id="side-nav-workspace" class="side-nav-item" onclick="switchMainView('workspace')">
+                    <span class="nav-icon">🚀</span>
+                    <span class="nav-label">极速创作与同步</span>
+                </button>
+            </nav>
+            
             <section class="section-card config-section">
                 <h3><span class="icon">⚙️</span>微信公众号配置</h3>
                 <form id="config-form">
@@ -80,12 +93,12 @@
         <main class="main-content">
             <header class="top-header">
                 <div class="nav-tabs-wrapper">
-                    <button id="nav-btn-workspace" class="nav-tab-btn active" onclick="switchMainView('workspace')">
-                        <span class="icon">🚀</span> 极速创作与同步
-                    </button>
-                    <button id="nav-btn-library" class="nav-tab-btn" onclick="switchMainView('library')">
+                    <button id="nav-btn-library" class="nav-tab-btn active" onclick="switchMainView('library')">
                         <span class="icon">📚</span> 文章管理与排期库
                         <span id="library-total-badge" class="nav-count-badge">0</span>
+                    </button>
+                    <button id="nav-btn-workspace" class="nav-tab-btn" onclick="switchMainView('workspace')">
+                        <span class="icon">🚀</span> 极速创作与同步
                     </button>
                 </div>
                 <div class="header-right">
@@ -97,7 +110,7 @@
             </header>
 
             <!-- 视图1：工作区极速排版与同步 -->
-            <div id="workspace-view" class="view-panel">
+            <div id="workspace-view" class="view-panel hidden">
                 <div class="workspace-grid">
                     <!-- 左半：输入与操作 -->
                     <div class="editor-panel">
@@ -246,7 +259,7 @@
             </div>
 
             <!-- 视图2：文章管理与排期库 -->
-            <div id="library-view" class="view-panel hidden">
+            <div id="library-view" class="view-panel">
                 <!-- 顶部工具栏：筛选过滤、统计胶囊、实时搜索与刷新 -->
                 <div class="library-toolbar">
                     <div class="filter-pills">

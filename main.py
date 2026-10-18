@@ -55,14 +55,14 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # 如果指定了 --gui，或者未传任何命令行参数 (如直接双击 EXE 或直接 python main.py)
-    if args.gui or len(sys.argv) == 1:
+    # 如果指定了 --gui 桌面独立窗口模式
+    if args.gui:
         from autogzh.gui import start_gui
         start_gui()
         sys.exit(0)
 
-    # 如果指定了 --ui，则启动 Web 界面
-    if args.ui:
+    # 如果指定了 --ui，或者未传任何命令行参数 (如直接双击运行或 python main.py)
+    if args.ui or len(sys.argv) == 1:
         from autogzh.server import start_server
         start_server()
         sys.exit(0)
